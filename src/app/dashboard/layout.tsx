@@ -12,7 +12,7 @@ export default function DashboardLayout({
       <header className="border-b">
         <div className="container mx-auto py-4 px-4 flex justify-between items-center">
           <Link href="/dashboard" className="text-2xl font-bold">
-            VibeCode
+            Craft
           </Link>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -38,7 +38,7 @@ export default function DashboardLayout({
       </main>
       <footer className="border-t py-6">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} VibeCode Ad Generator. All rights reserved.
+          &copy; {new Date().getFullYear()} Craft. All rights reserved.
         </div>
       </footer>
     </div>

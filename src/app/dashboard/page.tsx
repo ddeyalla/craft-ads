@@ -13,7 +13,7 @@ export default function DashboardPage() {
     <div>
       <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Ad Workspace</h1>
+          <h1 className="text-3xl font-bold">Static ads</h1>
           <p className="text-muted-foreground mt-2">
             Create and manage your social media ads
           </p>

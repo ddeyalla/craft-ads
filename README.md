@@ -23,7 +23,7 @@ Vibecode Ad Generator leverages AI (OpenAI) to analyze your product title, descr
 -   **Language:** TypeScript
 -   **UI:** [React](https://react.dev/), [shadcn/ui](https://ui.shadcn.com/) (using Radix UI primitives), Tailwind CSS v4
 -   **State Management:** React Hooks (potential for TanStack Query for server state)
--   **AI:** [OpenAI API](https://openai.com/api/) (GPT for copy, DALL-E for image edits)
+-   **AI:** [OpenAI API](https://openai.com/api/) (O4 Mini high for copy, GPT Image 1 for image edits)
 -   **Backend/DB:** [Supabase](https://supabase.com/) (Auth, Storage, potentially Database)
 -   **Image Processing:** [Sharp](https://sharp.pixelplumbing.com/)
 -   **Forms:** [React Hook Form](https://react-hook-form.com/) with [Zod](https://zod.dev/) for validation

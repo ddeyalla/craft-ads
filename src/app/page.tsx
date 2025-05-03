@@ -5,7 +5,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24">
       <div className="max-w-3xl mx-auto text-center">
         <h1 className="text-4xl md:text-6xl font-bold mb-6">
-          VibeCode Ad Generator
+          Craft
         </h1>
         <p className="text-xl md:text-2xl mb-8 text-muted-foreground">
           Generate export-ready TikTok/Instagram ads from product descriptions in seconds
