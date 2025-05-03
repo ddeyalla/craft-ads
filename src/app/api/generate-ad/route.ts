@@ -13,6 +13,9 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_A
   throw new Error('Missing Supabase Environment Variables');
 }
 
+// Define the bucket name for Supabase Storage
+const BUCKET_NAME = 'generated-ads'; // IMPORTANT: Use the name of the bucket you created!
+
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -23,8 +26,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
-
-const BUCKET_NAME = 'generated-ads'; // IMPORTANT: Use the name of the bucket you created!
 
 export async function POST(request: NextRequest) {
   try {
@@ -87,22 +88,39 @@ export async function POST(request: NextRequest) {
       // --- Step 2: Generate Ad Copy (GPT-4o mini) ---
       console.log('[Step 2] Starting Generate Ad Copy...');
       const adCopyResponse = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           {
-            role: 'system',
-            content: `You are a 2025-ready social-ad copywriter channeling **Nike’s punch-in-the-gut headlines** and **Apple’s minimalist clarity**.
+            role: "system",
+            content: `
+You are an expert 2025-era Advertising Creative Director, fusing **Nike’s visceral punch** with **Apple’s minimalist precision**.
 
-Generate **TWO** distinct ad-copy variants for TikTok/Instagram from the user’s product info.
+PRIMARY DIRECTIVE
 
-STRICT RULES
-1. ≤ 45 words per variant.  
-2. Open with an ALL-CAPS hook (≤ 8 words) that could sit huge on screen.  
-3. Follow with 1-2 short lines that sell a FEELING + clear benefit—no tech jargon.  
-4. Tone: bold, conversational, zero cringe; think “FIND YOUR GREATNESS.” meets “Privacy. That’s iPhone.”  
-5. No hashtags, emojis, or labels unless the user explicitly asks.  
-6. Separate the two variants with one blank line.  
-7. Output **only** the two ad-copy blocks—nothing else.`,
+Transform each product brief into one ready-to-run image-generation prompt that:
+• Keeps the PRODUCT in pristine hero focus (▸ **NO-MORPH**: no warping, stretching, or logo tampering).  
+• Sparks a bold emotional payoff + clear benefit.  
+• Overlays TWO text elements in safe zones without disrupting the composition.  
+
+
+BUILD THE PROMPT IN 7-10 LINES
+
+1. **Concept Sentence (1 line)** – Core feeling + key selling point.  
+2. **Setting & Atmosphere** – Location, lighting, mood, color palette.  
+3. **Subject Presentation** – Human action (if any), product placement, camera angle—product fully visible.  
+4. **Typography & Branding (dual placement)** –  
+   • **Headline (top-center):** Write exact hook in *quotation marks*; place inside the **upper 20 % height × center 70 % width** safe area, ≥5 % margin from edges. Bold sans-serif.  
+   • **Tagline + logo (bottom-center):** Write brand tag in *quotation marks*; note “logo lock-up to the left of text.” Place inside the **lower 20 % height × center 70 % width** safe area, same margin rules.  
+5. **Optional brand-color accents** – mention subtle integration that complements scene.  
+6. End with **ONE Style Reference Tag**:  
+   [NIKE INSPIRE] | [APPLE MINIMAL] | [VINTAGE AD] | [LIFESTYLE AUTHENTIC] | [LUXURY ELEGANT] | [BOLD GRAPHIC]
+
+
+TONE & FORMAT RULES
+• 7-10 sentences total, vivid but concise.  
+• No meta comments—output must be a final prompt.  
+• Always embed both text strings with exact safe-area placement cues.  
+`
           },
           {
             role: 'user',

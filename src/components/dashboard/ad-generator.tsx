@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,10 +9,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import { Download, Upload } from 'lucide-react';
 
 const formSchema = z.object({
   title: z.string().min(2, {
@@ -24,31 +22,27 @@ const formSchema = z.object({
   }),
 });
 
-export interface Ad {
+// Types 
+type Ad = {
   id: string;
   title: string;
   description: string;
   adCopy: string;
   imageUrl?: string;
-}
+};
 
-interface StoredAd {
+type StoredAd = {
   id: string;
   title: string;
   description: string;
   adCopy: string;
   imageUrl: string;
-}
+};
 
 export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedAd, setGeneratedAd] = useState<{
-    headline: string;
-    imageUrl: string;
-  } | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
-  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,307 +56,208 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
     accept: {
       'image/*': ['.jpeg', '.jpg', '.png', '.webp'],
     },
-    maxSize: 1024 * 1024, // 1MB
+    maxFiles: 1,
+    maxSize: 5242880, // 5MB
     onDrop: (acceptedFiles) => {
-      if (acceptedFiles.length > 0) {
-        setUploadedImage(acceptedFiles[0]);
-        const preview = URL.createObjectURL(acceptedFiles[0]);
-        setImagePreview(preview);
+      if (acceptedFiles && acceptedFiles.length > 0) {
+        const file = acceptedFiles[0];
+        setSelectedFile(file);
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
       }
+    },
+    onDropRejected: (fileRejections) => {
+      fileRejections.forEach((rejection) => {
+        if (rejection.errors[0].code === 'file-too-large') {
+          toast.error('Image is too large', {
+            description: 'Please upload an image smaller than 5MB',
+          });
+        } else {
+          toast.error('Invalid file', {
+            description: rejection.errors[0].message,
+          });
+        }
+      });
     },
   });
 
-  function saveAd(adData: {
-    title: string;
-    description: string;
-    adCopy: string;
-    imageUrl: string;
-  }) {
-    console.log('[Frontend] Attempting to save ad metadata (including Supabase URL) to localStorage');
+  async function toBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+  }
+
+  function saveAd(adData: { title: string; description: string; adCopy: string; imageUrl: string; }) {
+    const newAd: StoredAd = {
+      id: new Date().toISOString(),
+      title: adData.title,
+      description: adData.description,
+      adCopy: adData.adCopy,
+      imageUrl: adData.imageUrl,
+    };
+
     try {
+      // Get existing ads from localStorage
       const existingAdsString = localStorage.getItem('ads');
       const existingAds: StoredAd[] = existingAdsString ? JSON.parse(existingAdsString) : [];
-
-      const newAd: StoredAd = {
-        id: new Date().toISOString(), // Simple unique ID
-        title: adData.title,
-        description: adData.description,
-        adCopy: adData.adCopy,
-        imageUrl: adData.imageUrl,
-      };
-
-      const MAX_STORED_ADS = 20;
-      const updatedAds = [newAd, ...existingAds].slice(0, MAX_STORED_ADS);
-
+      
+      // Add the new ad and save
+      const updatedAds = [...existingAds, newAd];
       localStorage.setItem('ads', JSON.stringify(updatedAds));
-      console.log('[Frontend] Ad metadata saved successfully to localStorage.');
-    } catch (error: any) {
-      console.error('[Frontend] Error saving ad to localStorage:', error);
-      if (error.name === 'QuotaExceededError') {
-        toast.error('Error Saving Ad', {
-          description: `Could not save ad locally. Storage quota might be exceeded even with URLs. Try clearing some history.`,
-        });
-      } else {
-        toast.error('Error Saving Ad', {
-          description: `Could not save ad locally: ${error.message}.`,
-        });
-      }
+      
+      console.log('[AdGenerator] Ad saved to localStorage. Total ads:', updatedAds.length);
+      
+      // Dispatch storage event to notify other components
+      window.dispatchEvent(new Event('storage'));
+      
+      toast.success('Ad saved successfully', {
+        description: 'Your ad has been added to the library',
+      });
+      
+      // Call success callback
+      onSuccess();
+    } catch (error) {
+      console.error('[AdGenerator] Error saving ad to localStorage:', error);
+      toast.error('Failed to save ad');
     }
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log('[onSubmit] Form submitted with values:', values);
-    if (!uploadedImage) {
-      toast.error('Please upload a product image');
-      console.warn('[onSubmit] Validation failed: No image uploaded.');
+    if (!selectedFile) {
+      toast.error('Please upload an image');
       return;
     }
-    console.log('[onSubmit] Image validation passed.');
 
+    setIsLoading(true);
+    
     try {
-      setIsGenerating(true);
-      console.log('[onSubmit] State reset, starting generation process...');
-
-      console.log('[onSubmit] Starting Base64 conversion for uploaded image...');
-      let imageBase64: string | null = null;
-      try {
-        const reader = new FileReader();
-        imageBase64 = await new Promise<string>((resolve, reject) => {
-          reader.onloadend = () => {
-            const base64String = reader.result as string;
-            if (base64String && base64String.startsWith('data:image/')) {
-              resolve(base64String);
-            } else {
-              reject(new Error('Failed to read image as base64 data URL'));
-            }
-          };
-          reader.onerror = (error) => {
-            reject(new Error(`FileReader error: ${error}`));
-          };
-          reader.readAsDataURL(uploadedImage);
-        });
-
-        console.log('[onSubmit] Base64 conversion complete. Previewing original image.');
-      } catch (error: any) {
-        console.error('[onSubmit] Error during Base64 conversion:', error);
-        throw error;
-      }
-
-      console.log('[onSubmit] Calling /api/generate-ad with payload:', {
+      console.log('[AdGenerator] Generating ad with:', values);
+      
+      const imageBase64 = await toBase64(selectedFile);
+      const payload = {
         title: values.title,
-        description: values.description.substring(0, 50) + '...',
-        imageBase64: imageBase64 ? imageBase64.substring(0, 70) + '...' : 'null',
-      });
-
+        description: values.description,
+        imageBase64,
+      };
       const response = await fetch('/api/generate-ad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: values.title,
-          description: values.description,
-          imageBase64: imageBase64,
-        }),
+        body: JSON.stringify(payload),
       });
-
-      console.log(`[onSubmit] Received response from /api/generate-ad. Status: ${response.status}`);
+      
       if (!response.ok) {
-        let errorData = { error: `API request failed with status ${response.status}` };
-        try {
-          errorData = await response.json();
-        } catch (parseError) {
-          console.error('[onSubmit] Failed to parse error JSON from API response.');
-        }
-        console.error('[onSubmit] API Error Response Body:', errorData);
-        throw new Error(errorData.error || `API request failed with status ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || 'Failed to generate ad');
       }
-
-      const result = await response.json();
-      console.log('[onSubmit] Successfully parsed API Success Response:', {
-        adCopy: result.adCopy,
-        imageUrl: result.imageUrl ? result.imageUrl.substring(0, 100) + '...' : 'null',
-      });
-
-      if (!result.adCopy || !result.imageUrl) {
-        console.error('[onSubmit] API success response missing adCopy or imageUrl.', result);
-        throw new Error('API response missing adCopy or imageUrl');
-      }
-
-      console.log('[onSubmit] Updating state with generated ad and image URL, opening dialog...');
-      setGeneratedAd({ headline: result.adCopy, imageUrl: result.imageUrl });
-      setShowPreview(true);
-      toast.success('Ad generated successfully!');
-      onSuccess();
-
-      console.log('[onSubmit] Calling saveAd function...');
+      
+      const data = await response.json();
+      console.log('[AdGenerator] API response:', data);
+      
+      // Save the generated ad
       saveAd({
         title: values.title,
         description: values.description,
-        adCopy: result.adCopy,
-        imageUrl: result.imageUrl,
+        adCopy: data.adCopy,
+        imageUrl: data.imageUrl,
       });
-
-    } catch (error: any) {
-      console.error('[onSubmit] Error during ad generation process:', error);
-      toast.error('Ad generation failed', {
-        description: `An error occurred: ${error.message}. Check console for details.`,
+      
+      // Reset form
+      form.reset();
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      
+    } catch (error) {
+      console.error('[AdGenerator] Error generating ad:', error);
+      toast.error('Error generating ad', {
+        description: error instanceof Error ? error.message : 'Please try again',
       });
     } finally {
-      console.log('[onSubmit] Finalizing generation process, setting isGenerating=false.');
-      setIsGenerating(false);
+      setIsLoading(false);
     }
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Create New Ad</CardTitle>
-          <CardDescription>
-            Fill in the details about your product to generate an ad
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Product Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Eco-Friendly Water Bottle" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      The name of your product
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Product Description</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Describe your product, its features, benefits, and target audience" 
-                        className="min-h-32"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Provide a detailed description of your product
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div>
-                <FormLabel className="block mb-2">Product Image</FormLabel>
-                <div 
-                  {...getRootProps()} 
-                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                    isDragActive ? 'border-primary bg-primary/10' : 'border-border'
-                  }`}
-                >
-                  <input {...getInputProps()} />
-                  
-                  {imagePreview ? (
-                    <div className="flex flex-col items-center">
-                      <div className="relative w-40 h-40 mb-4">
-                        <Image 
-                          src={imagePreview} 
-                          alt="Preview" 
-                          fill
-                          className="object-contain"
-                        />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Click or drag to replace
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="py-4">
-                      <p className="text-muted-foreground mb-1">
-                        {isDragActive ? 'Drop the image here' : 'Drag & drop an image here, or click to select'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Max size: 1MB. Recommended: 1080×1350px
-                      </p>
-                    </div>
-                  )}
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <h2 className="text-lg font-medium">Product image</h2>
+        
+        <div {...getRootProps()} className="cursor-pointer">
+          <input {...getInputProps()} />
+          <div className={`border-2 border-dashed rounded-md transition-colors ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/20'}`}>
+            {previewUrl ? (
+              <div className="relative aspect-square">
+                <Image
+                  src={previewUrl}
+                  alt="Preview"
+                  fill
+                  className="object-cover rounded-md"
+                />
+                <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                  Click to change
                 </div>
               </div>
-              
-              <Button type="submit" disabled={isGenerating} className="w-full">
-                {isGenerating ? 'Generating...' : 'Generate Ad'}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-      
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Your Generated Ad</DialogTitle>
-            <DialogDescription>
-              Here&apos;s your AI-generated ad ready for social media
-            </DialogDescription>
-          </DialogHeader>
-          
-          {generatedAd ? (
-            <div className="flex flex-col items-center">
-              <div className="relative w-full aspect-[4/5] mb-4 rounded-lg overflow-hidden">
-                <Image 
-                  src={generatedAd.imageUrl} 
-                  alt="Generated Ad" 
-                  fill
-                  className="object-cover"
-                />
+            ) : (
+              <div className="flex flex-col items-center justify-center p-6 text-muted-foreground">
+                <Upload className="h-10 w-10 mb-2 text-muted-foreground/70" />
+                <p className="text-sm font-medium">Drag and drop your product image or click to select</p>
+                <p className="text-xs mt-1">Max size: 5MB. Recommended 1000×1000</p>
               </div>
-              <div className="text-center mb-4">
-                <h3 className="text-xl font-semibold">{generatedAd.headline}</h3>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <Skeleton className="w-full aspect-[4/5] rounded-lg" />
-              <Skeleton className="h-6 w-3/4 mx-auto" />
-            </div>
-          )}
+            )}
+          </div>
+        </div>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Product title</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. Eco friendly water bottle" {...field} />
+                </FormControl>
+                <FormDescription>
+                  The name of your product
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowPreview(false);
-                onSuccess();
-              }}
-              className="w-full"
-            >
-              View in Library
-            </Button>
-            <Button 
-              onClick={() => {
-                setShowPreview(false);
-                form.reset();
-                setUploadedImage(null);
-                setImagePreview(null);
-                setGeneratedAd(null);
-              }}
-              className="w-full"
-            >
-              Create Another
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Product description</FormLabel>
+                <FormControl>
+                  <Textarea 
+                    placeholder="Describe your product, its features, benefits and target audience" 
+                    className="min-h-[100px]" 
+                    {...field} 
+                  />
+                </FormControl>
+                <FormDescription>
+                  Provide a detailed description of your product
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Generating ad...' : 'Generate ads'}
+          </Button>
+          <p className="text-xs text-center text-muted-foreground">
+            Each generated ad takes 1 credit
+          </p>
+        </form>
+      </Form>
+    </div>
   );
 }

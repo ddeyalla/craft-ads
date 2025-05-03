@@ -1,8 +1,8 @@
-# Vibecode Ad Generator
+# Craft
 
 **Turn your product details into high-impact static ads in seconds.**
 
-Vibecode Ad Generator leverages AI (OpenAI) to analyze your product title, description, and image, generating compelling ad copy and visually enhanced images optimized for social media platforms. Built with Next.js, React, Supabase, and shadcn/ui.
+Craft leverages AI (OpenAI) to analyze your product title, description, and image, generating compelling ad copy and visually enhanced images optimized for social media platforms. Built with Next.js, React, Supabase, and shadcn/ui.
 
 ---
 

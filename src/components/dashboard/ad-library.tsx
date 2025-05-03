@@ -9,10 +9,11 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AdCard } from './ad-card';
 
 // Add Ad type for static ads and fix Image src error
 type Ad = {
-  id: number;
+  id: string;
   headline: string;
   image_url?: string;
   created_at: string;
@@ -21,6 +22,14 @@ type Ad = {
   imageUrl: string;
 };
 
+interface StoredAd {
+  id: string;
+  title: string;
+  description: string;
+  adCopy: string;
+  imageUrl: string;
+}
+
 export default function AdLibrary() {
   const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -28,6 +37,7 @@ export default function AdLibrary() {
 
   // Use localStorage for ads (simulate DB)
   const [ads, setAds] = useState<Ad[]>([]);
+  const [storedAds, setStoredAds] = useState<StoredAd[]>([]);
   const isLoading = false;
 
   useEffect(() => {
@@ -35,8 +45,18 @@ export default function AdLibrary() {
     const storedAdsString = localStorage.getItem('ads');
     if (storedAdsString) {
       try {
-        const storedAds: Ad[] = JSON.parse(storedAdsString);
-        setAds(storedAds);
+        const storedAds: StoredAd[] = JSON.parse(storedAdsString);
+        setStoredAds(storedAds);
+        const ads: Ad[] = storedAds.map((ad, idx) => ({
+          id: `${ad.id}-${ad.title}-${idx}`,
+          headline: ad.title,
+          image_url: ad.imageUrl,
+          created_at: new Date().toISOString(),
+          title: ad.title,
+          description: ad.description,
+          imageUrl: ad.imageUrl,
+        }));
+        setAds(ads);
         console.log(`[AdLibrary] Successfully loaded ${storedAds.length} ads from localStorage.`);
       } catch (error) {
         console.error('[AdLibrary] Error parsing ads JSON from localStorage:', error);
@@ -49,7 +69,7 @@ export default function AdLibrary() {
     }
   }, []);
 
-  function handleDownload(imageUrl: string | undefined, id: number, title: string) {
+  function handleDownload(imageUrl: string | undefined, id: string, title: string) {
     try {
       const link = document.createElement('a');
       link.href = imageUrl ? imageUrl : '/placeholder.png';
@@ -69,10 +89,41 @@ export default function AdLibrary() {
     console.log(`[AdLibrary] Attempting to delete ad with ID: ${ad.id}`);
     const updatedAds = ads.filter(a => a.id !== ad.id);
     setAds(updatedAds);
-    localStorage.setItem('ads', JSON.stringify(updatedAds));
+    const updatedStoredAds = storedAds.filter(sa => sa.title !== ad.title || sa.description !== ad.description);
+    setStoredAds(updatedStoredAds);
+    localStorage.setItem('ads', JSON.stringify(updatedStoredAds));
     console.log(`[AdLibrary] Ad ${ad.id} deleted. ${updatedAds.length} ads remaining.`);
     setShowPreview(false);
     toast.success(`Ad "${ad.title}" deleted successfully`);
+  };
+
+  function handleDuplicate(ad: Ad) {
+    try {
+      const newAd: StoredAd = {
+        id: new Date().toISOString(),
+        title: ad.title,
+        description: ad.description,
+        adCopy: ad.headline,
+        imageUrl: ad.imageUrl,
+      };
+      const updatedStoredAds = [...storedAds, newAd];
+      setStoredAds(updatedStoredAds);
+      localStorage.setItem('ads', JSON.stringify(updatedStoredAds));
+      const newAds = [...ads, {
+        id: `${newAd.id}-${newAd.title}-${updatedStoredAds.length - 1}`,
+        headline: newAd.title,
+        image_url: newAd.imageUrl,
+        created_at: new Date().toISOString(),
+        title: newAd.title,
+        description: newAd.description,
+        imageUrl: newAd.imageUrl,
+      }];
+      setAds(newAds);
+      toast.success('Ad duplicated successfully');
+    } catch (error) {
+      console.error('Failed to duplicate ad:', error);
+      toast.error('Failed to duplicate ad');
+    }
   };
 
   return (
@@ -85,102 +136,34 @@ export default function AdLibrary() {
       </div>
       
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="overflow-hidden flex flex-col">
-              <Skeleton className="w-full aspect-[4/5]" />
-              <CardContent className="flex-grow p-4 mt-auto">
-                <Skeleton className="h-4 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardContent>
-            </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="border rounded-md overflow-hidden">
+              <div className="aspect-square bg-muted animate-pulse" />
+              <div className="p-3 space-y-2">
+                <div className="h-4 bg-muted animate-pulse rounded" />
+                <div className="h-3 w-1/2 bg-muted animate-pulse rounded" />
+              </div>
+            </div>
           ))}
         </div>
       ) : ads && ads.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {ads.map((ad) => (
-            <Card key={ad.id} className="overflow-hidden flex flex-col group relative">
-              <div 
-                className="relative w-full aspect-[4/5] cursor-pointer"
-                onClick={() => {
-                  setSelectedAd(ad);
-                  setShowPreview(true);
-                }}
-              >
-                {ad.image_url ? (
-                  () => {
-                    console.log(`[AdLibrary] Rendering image for Ad ID ${ad.id}. URL:`, ad.image_url);
-                    return (
-                      <Image 
-                        src={ad.image_url} 
-                        alt={ad.title} 
-                        fill
-                        className="object-cover"
-                        onError={(e) => {
-                          console.warn(`[AdLibrary] Failed to load image for Ad ID ${ad.id}. URL: ${ad.image_url}`, e);
-                        }}
-                      />
-                    );
-                  }
-                )() : (
-                  <div className="w-full aspect-[4/5] bg-gray-200" />
-                )}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <p className="text-white font-medium">Click to preview</p>
-                </div>
-              </div>
-              <CardContent className="flex-grow p-4 mt-auto">
-                <h3 className="font-medium truncate" title={ad.headline}>
-                  {ad.headline}
-                </h3>
-                <p className="text-sm text-muted-foreground truncate" title={ad.title}>
-                  {ad.title}
-                </p>
-                <div className="flex justify-between items-center mt-2">
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(ad.created_at).toLocaleDateString()}
-                  </p>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        Options
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleDownload(ad.image_url, ad.id, ad.title)}>
-                        {ad.title.length > 0 ? '' : ''}
-                        Download
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => {
-                          setSelectedAd(ad);
-                          setShowPreview(true);
-                        }}
-                      >
-                        Preview
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-destructive"
-                        onClick={() => handleDelete(ad)}
-                      >
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {ads.map(ad => (
+            <AdCard
+              key={ad.id}
+              imageUrl={ad.imageUrl}
+              adCopy={ad.headline}
+              productTitle={ad.title}
+              onDelete={() => handleDelete(ad)}
+              onDuplicate={() => handleDuplicate(ad)}
+            />
           ))}
         </div>
       ) : (
-        <div className="text-center py-12">
-          <h3 className="text-xl font-medium mb-2">No ads yet</h3>
-          <p className="text-muted-foreground mb-6">
-            Generate your first ad to see it here
-          </p>
-          <Button onClick={() => router.push('/dashboard?tab=generator')}>
-            Create Your First Ad
-          </Button>
+        <div className="text-center py-12 border rounded-md">
+          <p className="text-muted-foreground">No ads created yet</p>
+          <p className="text-sm text-muted-foreground mt-1">Generate your first ad using the form</p>
         </div>
       )}
       

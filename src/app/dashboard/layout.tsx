@@ -1,46 +1,22 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { ReactNode } from "react";
+import Link from "next/link";
+import { User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sidebar } from "@/components/sidebar/sidebar";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+interface DashboardLayoutProps {
+  children: ReactNode;
+}
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b">
-        <div className="container mx-auto py-4 px-4 flex justify-between items-center">
-          <Link href="/dashboard" className="text-2xl font-bold">
-            Craft
-          </Link>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="text-sm text-muted-foreground">
-                Credits: <span className="font-medium text-foreground">10</span>
-              </div>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/pricing">Get More</Link>
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Avatar>
-                <AvatarImage src={undefined} />
-                <AvatarFallback>U</AvatarFallback>
-              </Avatar>
-              <div className="text-sm font-medium">User</div>
-            </div>
-          </div>
-        </div>
-      </header>
-      <main className="flex-1 container mx-auto py-8 px-4">
+    <div className="h-full relative">
+      <div className="hidden h-full md:flex md:w-72 md:flex-col md:fixed md:inset-y-0 z-[80] bg-background">
+        <Sidebar />
+      </div>
+      <main className="md:pl-72 h-full">
         {children}
       </main>
-      <footer className="border-t py-6">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Craft. All rights reserved.
-        </div>
-      </footer>
     </div>
   );
 }
