@@ -191,7 +191,7 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
         
         <div {...getRootProps()} className="cursor-pointer">
           <input {...getInputProps()} />
-          <div className={`border-2 border-dashed rounded-md transition-colors ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/20'}`}>
+          <div className={`border-1 border-dashed rounded-md transition-colors ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/20'}`}>
             {previewUrl ? (
               <div className="relative aspect-square">
                 <Image
@@ -207,8 +207,8 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
             ) : (
               <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
                 <Upload className="h-4 w-4 mb-2 text-muted-foreground/70" />
-                <p className="text-sm font-medium text-center">Drag and drop your product image or click to select</p>
-                <p className="text-xs mt-1">Max size: 5MB. Recommended 1000×1000</p>
+                <p className="text-xs font-medium text-center">Drag and drop your product image or click to select</p>
+                <p className="text-xs font-light mt-1">Max size: 5MB. Recommended 1000×1000</p>
               </div>
             )}
           </div>
@@ -243,7 +243,7 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
                 <FormControl>
                   <Textarea 
                     placeholder="Describe your product, its features, benefits and target audience" 
-                    className="h-[150px] max-h-[150px] overflow-y-auto resize-none" 
+                    className="h-[128px] max-h-[120px] overflow-y-auto resize-none" 
                     {...field} 
                   />
                 </FormControl>
@@ -273,23 +273,23 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
                       <ToggleGroupItem
                         value="1:1"
                         aria-label="Square 1:1"
-                        className="px-4 py-2 rounded-md border data-[state=on]:bg-primary data-[state=on]:text-white"
+                        className="px-2 py-2 rounded-md border data-[state=on]:bg-primary data-[state=on]:text-white"
                       >
-                        Square 1:1
+                        Square
                       </ToggleGroupItem>
                       <ToggleGroupItem
                         value="16:9"
                         aria-label="Landscape 16:9"
                         className="px-4 py-2 rounded-md border data-[state=on]:bg-primary data-[state=on]:text-white"
                       >
-                        Landscape 16:9
+                        Landscape
                       </ToggleGroupItem>
                       <ToggleGroupItem
                         value="9:16"
                         aria-label="Portrait 9:16"
                         className="px-4 py-2 rounded-md border data-[state=on]:bg-primary data-[state=on]:text-white"
                       >
-                        Portrait 9:16
+                        Portrait
                       </ToggleGroupItem>
                     </ToggleGroup>
                   </div>

@@ -15,7 +15,7 @@ interface HeaderProps {
 
 export function Header({ title }: HeaderProps) {
   return (
-    <div className="flex items-center justify-between pb-4 mb-6 border-b">
+    <div className="flex items-center justify-between pb-4 border-b">
       <h1 className="text-2xl font-semibold">{title}</h1>
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" className="gap-1">
