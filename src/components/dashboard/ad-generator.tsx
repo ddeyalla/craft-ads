@@ -273,7 +273,7 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
                       <ToggleGroupItem
                         value="1:1"
                         aria-label="Square 1:1"
-                        className="px-2 py-2 rounded-md border data-[state=on]:bg-primary data-[state=on]:text-white"
+                        className="px-4 py-2 rounded-md border data-[state=on]:bg-primary data-[state=on]:text-white"
                       >
                         Square
                       </ToggleGroupItem>
