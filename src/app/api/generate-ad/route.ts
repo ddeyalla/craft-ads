@@ -30,7 +30,7 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, description, imageBase64 } = body;
+    const { title, description, imageBase64, aspectRatio = '1:1' } = body;
 
     // Basic validation
     if (!title || !description || !imageBase64) {
@@ -184,12 +184,29 @@ TONE & FORMAT RULES
       );
 
       console.log('[Step 3] Calling OpenAI images.edit with PNG image...');
+      
+      // Map aspect ratio to OpenAI size parameter
+      let imageSize: '1024x1024' | '1536x1024' | '1024x1536';
+      switch (aspectRatio) {
+        case '16:9':
+          imageSize = '1536x1024';
+          break;
+        case '9:16':
+          imageSize = '1024x1536';
+          break;
+        default:
+          imageSize = '1024x1024'; // Default to 1:1
+      }
+      
+      console.log(`[Step 3] Using image size: ${imageSize} for aspect ratio: ${aspectRatio}`);
+      
       const imageEditResponse = await openai.images.edit({
         model: 'gpt-image-1',      // Keeping user's reverted model choice
         image: uploadableImage,      // Pass the PNG uploadable
         prompt: adCopy,
         n: 1,
-        size: '1024x1024',
+        size: imageSize,
+        quality: 'high',
       });
 
       const responseData = imageEditResponse.data?.[0];

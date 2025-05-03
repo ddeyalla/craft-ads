@@ -12,6 +12,8 @@ import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { Download, Upload } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Label } from "@/components/ui/label";
 
 const formSchema = z.object({
   title: z.string().min(2, {
@@ -20,6 +22,7 @@ const formSchema = z.object({
   description: z.string().min(10, {
     message: 'Description must be at least 10 characters.',
   }),
+  aspectRatio: z.enum(['1:1', '16:9', '9:16']),
 });
 
 // Types 
@@ -49,6 +52,7 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
     defaultValues: {
       title: '',
       description: '',
+      aspectRatio: '1:1',
     },
   });
 
@@ -140,6 +144,7 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
       const payload = {
         title: values.title,
         description: values.description,
+        aspectRatio: values.aspectRatio,
         imageBase64,
       };
       const response = await fetch('/api/generate-ad', {
@@ -200,9 +205,9 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center p-6 text-muted-foreground">
-                <Upload className="h-10 w-10 mb-2 text-muted-foreground/70" />
-                <p className="text-sm font-medium">Drag and drop your product image or click to select</p>
+              <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
+                <Upload className="h-4 w-4 mb-2 text-muted-foreground/70" />
+                <p className="text-sm font-medium text-center">Drag and drop your product image or click to select</p>
                 <p className="text-xs mt-1">Max size: 5MB. Recommended 1000×1000</p>
               </div>
             )}
@@ -238,12 +243,59 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
                 <FormControl>
                   <Textarea 
                     placeholder="Describe your product, its features, benefits and target audience" 
-                    className="min-h-[100px]" 
+                    className="h-[150px] max-h-[150px] overflow-y-auto resize-none" 
                     {...field} 
                   />
                 </FormControl>
                 <FormDescription>
                   Provide a detailed description of your product
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="aspectRatio"
+            render={({ field }) => (
+              <FormItem className="space-y-3">
+                <FormLabel>Aspect Ratio</FormLabel>
+                <FormControl>
+                  <div className="flex w-full justify-center">
+                    <ToggleGroup
+                      type="single"
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      className="flex gap-2"
+                      aria-label="Select aspect ratio"
+                    >
+                      <ToggleGroupItem
+                        value="1:1"
+                        aria-label="Square 1:1"
+                        className="px-4 py-2 rounded-md border data-[state=on]:bg-primary data-[state=on]:text-white"
+                      >
+                        Square 1:1
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="16:9"
+                        aria-label="Landscape 16:9"
+                        className="px-4 py-2 rounded-md border data-[state=on]:bg-primary data-[state=on]:text-white"
+                      >
+                        Landscape 16:9
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="9:16"
+                        aria-label="Portrait 9:16"
+                        className="px-4 py-2 rounded-md border data-[state=on]:bg-primary data-[state=on]:text-white"
+                      >
+                        Portrait 9:16
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                </FormControl>
+                <FormDescription>
+                  Select the aspect ratio for your ad image
                 </FormDescription>
                 <FormMessage />
               </FormItem>

@@ -26,32 +26,25 @@ const routes = [
   {
     label: "Static Ads",
     icon: Image,
-    href: "/dashboard/static",
-    color: "text-slate-500",
-    active: true,
-  },
-  {
-    label: "Video Ads",
-    icon: Video,
-    href: "/dashboard/video",
+    href: "/static-ads",
     color: "text-slate-500",
   },
   {
     label: "Audience",
     icon: Users,
-    href: "/dashboard/audience",
+    href: "/audience",
     color: "text-slate-500",
   },
   {
     label: "Products",
     icon: Package,
-    href: "/dashboard/products",
+    href: "/products",
     color: "text-slate-500",
   },
   {
     label: "Ad gallery",
     icon: Grid2X2,
-    href: "/dashboard/gallery",
+    href: "/ad-gallery",
     color: "text-slate-500",
   },
 ];
@@ -60,7 +53,8 @@ const supportRoutes = [
   {
     label: "Book a call",
     icon: Phone,
-    href: "/dashboard/book-call",
+    href: "https://cal.com/divyanshu-playjump/20-min-meeting",
+    external: true,
   },
   {
     label: "Feedback",
@@ -100,14 +94,19 @@ export function Sidebar() {
               key={route.href}
               href={route.href}
               className={cn(
-                "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:bg-accent rounded-md transition",
-                pathname === route.href || route.active
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground"
+                "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-md transition",
+                pathname === route.href
+                  ? "bg-accent text-accent-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <div className="flex items-center flex-1">
-                <route.icon className={cn("h-5 w-5 mr-3")} />
+                <route.icon className={cn(
+                  "h-5 w-5 mr-3",
+                  pathname === route.href
+                    ? "text-primary"
+                    : "text-muted-foreground group-hover:text-foreground"
+                )} />
                 {route.label}
               </div>
             </Link>
@@ -120,6 +119,8 @@ export function Sidebar() {
             <Link
               key={route.href}
               href={route.href}
+              target={route.external ? "_blank" : undefined}
+              rel={route.external ? "noopener noreferrer" : undefined}
               className="text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-md transition text-muted-foreground"
             >
               <div className="flex items-center flex-1">

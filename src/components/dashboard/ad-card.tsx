@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,11 +16,38 @@ interface AdCardProps {
   adCopy: string;
   productTitle: string;
   onDelete?: () => void;
-  onDuplicate?: () => void;
 }
 
-export function AdCard({ imageUrl, adCopy, productTitle, onDelete, onDuplicate }: AdCardProps) {
+export function AdCard({ imageUrl, adCopy, productTitle, onDelete }: AdCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+
+  // Function to download the image
+  const handleDownload = async () => {
+    try {
+      // Fetch the image
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      
+      // Create a download link
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      
+      // Generate filename from product title or use a default name
+      const filename = `${productTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-ad.jpg`;
+      link.download = filename;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up
+      URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+    }
+  };
 
   return (
     <div 
@@ -48,8 +75,9 @@ export function AdCard({ imageUrl, adCopy, productTitle, onDelete, onDuplicate }
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onDuplicate}>
-              Duplicate
+            <DropdownMenuItem onClick={handleDownload}>
+              <Download className="h-4 w-4 mr-2" />
+              Download
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onDelete}>
               Delete

@@ -128,13 +128,6 @@ export default function AdLibrary() {
 
   return (
     <>
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold mb-2">Your Ad Library</h2>
-        <p className="text-muted-foreground">
-          View, download, and manage your generated ads
-        </p>
-      </div>
-      
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
@@ -156,7 +149,6 @@ export default function AdLibrary() {
               adCopy={ad.headline}
               productTitle={ad.title}
               onDelete={() => handleDelete(ad)}
-              onDuplicate={() => handleDuplicate(ad)}
             />
           ))}
         </div>

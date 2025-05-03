@@ -8,15 +8,21 @@ import { toast } from "sonner";
 
 export default function DashboardPage() {
   return (
-    <div className="p-6 h-full">
-      <Header title="Static ad generations" />
+    <div className="h-screen flex flex-col overflow-hidden">
+      {/* Fixed top nav */}
+      <div className="sticky top-0 bg-background w-full">
+        <div className="px-6 py-3">
+          <Header title="Static ad generations" />
+        </div>
+      </div>
       
-      <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-1">
-          <h2 className="text-lg font-medium mb-4">Gallery</h2>
+      <div className="flex flex-1 h-[calc(100vh-72px)]">
+        {/* Main (scrollable) gallery section */}
+        <div className="flex-1 overflow-y-auto p-6">
           <Tabs defaultValue="today">
-            <div className="flex justify-between items-center mb-4">
-              <TabsList>
+            <div className="flex items-center justify-between mb-4 w-full">
+              <h2 className="text-lg font-medium">Gallery</h2>
+              <TabsList className="ml-auto">
                 <TabsTrigger value="today">Today</TabsTrigger>
                 <TabsTrigger value="previous">Previous</TabsTrigger>
               </TabsList>
@@ -31,10 +37,9 @@ export default function DashboardPage() {
             </TabsContent>
           </Tabs>
         </div>
-        
-        <div className="lg:w-[380px] shrink-0">
+        {/* Fixed ad form on the right */}
+        <div className="hidden lg:block lg:w-[380px] shrink-0 border-l bg-background p-6 overflow-hidden">
           <AdGenerator onSuccess={() => {
-            // Show a notification when an ad is created
             toast.success("Ad created successfully", {
               description: "Your ad has been generated and saved to the library.",
             });
