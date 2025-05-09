@@ -73,11 +73,11 @@ const supportRoutes = [
   },
 ];
 
-export function Sidebar() {
+export default function MainSidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="space-y-4 py-4 flex flex-col h-full bg-background border-r">
+    <div className="fixed top-0 left-0 h-screen w-64 z-30 bg-background border-r flex flex-col space-y-4 py-4">
       <div className="px-3 py-2 flex-1">
         <Link href="/dashboard" className="flex items-center pl-3 mb-8">
           <div className="relative w-8 h-8 mr-3 bg-black rounded-md flex items-center justify-center">

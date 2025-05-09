@@ -8,11 +8,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useState, useEffect } from 'react';
-import { useAdGeneration } from '@/app/dashboard/page';
+import { useAdGeneration } from '@/app/static-ads/ad-generation-context';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
 import Image from 'next/image';
-import { Download, Upload } from 'lucide-react';
+import { Download, Upload, Loader2 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Label } from "@/components/ui/label";
 
@@ -258,8 +258,8 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
+    <div className="space-y-4 pb-2 px-0">
+      <div className="space-y-1">
         <h2 className="text-lg font-medium">Product image</h2>
         
         <div {...getRootProps()} className="cursor-pointer">
@@ -289,6 +289,7 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
       </div>
 
       <Form {...form}>
+        <div className="flex flex-col gap-3">
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <FormField
             control={form.control}
@@ -375,13 +376,24 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
             )}
           />
           
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Generating ad...' : 'Generate ads'}
+          <Button type="submit" className="w-full relative flex items-center justify-center overflow-hidden" disabled={isLoading}>
+            <span
+              className={`transition-opacity duration-200 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+            >
+              Generate ads
+            </span>
+            <span
+              className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${isLoading ? 'opacity-100' : 'opacity-0'}`}
+              aria-hidden={!isLoading}
+            >
+              <Loader2 className="w-5 h-5 animate-spin" />
+            </span>
           </Button>
           <p className="text-xs text-center text-muted-foreground">
             Each generated ad takes 1 credit
           </p>
         </form>
+        </div>
       </Form>
     </div>
   );

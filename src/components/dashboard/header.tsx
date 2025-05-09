@@ -18,7 +18,7 @@ interface HeaderProps {
 export function Header({ title }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between py-4">
+      <div className="flex items-center justify-between w-full h-14 px-4">
         <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="h-8 gap-1">

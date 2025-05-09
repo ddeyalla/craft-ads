@@ -1,112 +1,44 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Download, Share2, X } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { X, ChevronLeft, ChevronRight, Download, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { Ad } from '@/types/ad';
+import Image from 'next/image';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 
-// Define the Ad type
-type Ad = {
-  id: string;
-  headline: string;
-  image_url?: string;
-  created_at: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-  originalIndex?: number;
-};
+function trimDescription(desc: string) {
+  if (!desc) return '';
+  return desc.length > 50 ? desc.slice(0, 50) + '...' : desc;
+}
 
 export default function AdPreviewPage() {
   const router = useRouter();
   const params = useParams();
-  const adId = params.id as string;
+  const rawAdIdFromParams = params.id as string;
   
   const [ad, setAd] = useState<Ad | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [allAds, setAllAds] = useState<Ad[]>([]);
   const [currentAdIndex, setCurrentAdIndex] = useState<number>(-1);
-  const [showFullDescription, setShowFullDescription] = useState(false);
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const descriptionRef = useRef<HTMLSpanElement | null>(null);
 
-  useEffect(() => {
-    // Load all ads from localStorage
-    const loadAds = () => {
-      try {
-        const storedAdsString = localStorage.getItem('ads');
-        if (!storedAdsString) {
-          setLoading(false);
-          return;
-        }
-        
-        const storedAds = JSON.parse(storedAdsString);
-        const formattedAds: Ad[] = storedAds.map((ad: any, idx: number) => ({
-          id: ad.id, // Use the same ID format as in AdLibrary
-          headline: ad.title,
-          image_url: ad.imageUrl,
-          created_at: ad.id || new Date().toISOString(),
-          title: ad.title,
-          description: ad.description,
-          imageUrl: ad.imageUrl,
-          originalIndex: idx,
-        }));
-        
-        // Sort by date (newest first)
-        const sortedAds = [...formattedAds].sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-        
-        setAllAds(sortedAds);
-        
-        // Find current ad by ID - improve matching logic
-        const index = sortedAds.findIndex(ad => ad.id === adId);
-        
-        if (index !== -1) {
-          setAd(sortedAds[index]);
-          setCurrentAdIndex(index);
-          console.log('Ad found:', sortedAds[index]);
-        } else {
-          // Fallback: Try partial matching or the first ad
-          console.log('Ad not found with ID:', adId);
-          console.log('Available ads:', sortedAds.map(ad => ({ id: ad.id, title: ad.title })));
-          
-          if (sortedAds.length > 0) {
-            // If we have ads but couldn't find the exact match, use the first one
-            setAd(sortedAds[0]);
-            setCurrentAdIndex(0);
-            console.log('Falling back to the first ad');
-          } else {
-            // No ads available
-            toast.error("No ads found");
-          }
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading ad data:', error);
-        setLoading(false);
-        toast.error("Error loading ad data");
-      }
-    };
-    
-    loadAds();
-  }, [adId]);
+  const debouncedNavigate = useDebounce((url: string) => {
+    setImageLoaded(false);
+    router.push(url);
+  }, 300);
 
-  const handlePrevAd = () => {
-    if (currentAdIndex > 0) {
-      const prevAd = allAds[currentAdIndex - 1];
-      router.push(`/preview/${prevAd.id}`);
-    }
-  };
-
-  const handleNextAd = () => {
-    if (currentAdIndex < allAds.length - 1) {
-      const nextAd = allAds[currentAdIndex + 1];
-      router.push(`/preview/${nextAd.id}`);
-    }
+  const formatDate = (dateStr: string | undefined): string => {
+    if (!dateStr) return '';
+    return formatDistanceToNow(new Date(dateStr), { addSuffix: true });
   };
 
   const handleDownload = async () => {
@@ -116,25 +48,20 @@ export default function AdPreviewPage() {
         return;
       }
       
-      // Fetch the image
       const response = await fetch(ad.imageUrl);
       const blob = await response.blob();
       
-      // Create a download link
       const downloadUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
       
-      // Generate filename from product title or use a default name
       const filename = `${ad.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-ad.jpg`;
       link.download = filename;
       
-      // Trigger download
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
-      // Clean up
       URL.revokeObjectURL(downloadUrl);
       
       toast.success('Image downloaded successfully');
@@ -153,42 +80,137 @@ export default function AdPreviewPage() {
       .then(() => {
         toast.success("Shareable link copied to clipboard");
       })
-      .catch(err => {
-        console.error('Failed to copy link:', err);
+      .catch(() => {
         toast.error("Failed to copy link");
       });
   };
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      const formattedDate = new Intl.DateTimeFormat('en-US', {
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(date);
-      return formattedDate;
-    } catch (e) {
-      return 'Unknown date';
+  useEffect(() => {
+    const storedAdsString = localStorage.getItem('ads');
+    if (!storedAdsString) {
+      setAllAds([]);
+      setLoading(false);
+      return;
     }
-  };
-  
+    const storedAds = JSON.parse(storedAdsString);
+    const formattedAds: Ad[] = storedAds.map((ad: any, idx: number) => ({
+      id: ad.id,
+      headline: ad.title,
+      image_url: ad.imageUrl,
+      created_at: ad.id || new Date().toISOString(),
+      title: ad.title,
+      description: ad.description,
+      imageUrl: ad.imageUrl,
+      originalIndex: idx,
+    }));
+    const sortedAds = [...formattedAds].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setAllAds(sortedAds);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (typeof rawAdIdFromParams !== 'string') {
+      setError('Invalid Ad ID in URL.');
+      setLoading(false);
+      setAd(null);
+      setCurrentAdIndex(-1);
+      return;
+    }
+    const decodedAdId = decodeURIComponent(rawAdIdFromParams);
+
+    setLoading(true);      
+    setImageLoaded(false); 
+
+    if (!allAds.length) {
+      if (!localStorage.getItem('ads')) { 
+        setAd(null);
+        setError('No ads available.');
+        setCurrentAdIndex(-1);
+      }
+      setLoading(false); 
+      return;
+    }
+
+    const idx = allAds.findIndex(localAd => localAd.id === decodedAdId);
+
+    if (idx !== -1) { 
+      setAd(allAds[idx]);
+      setCurrentAdIndex(idx);
+      setError(null); 
+      setIsNavigating(false); 
+      setLoading(false); 
+    } else { 
+      setError(null); 
+      const firstAd = allAds[0];
+      if (firstAd && firstAd.id && firstAd.id !== decodedAdId) {
+        console.warn(`Ad with ID "${decodedAdId}" not found. Redirecting to first available ad: ${firstAd.id}`);
+        router.replace(`/preview/${firstAd.id}`);
+        return; 
+      } else {
+        setAd(null);
+        let notFoundErrorMessage = 'The requested ad could not be found.';
+        if (firstAd && firstAd.id === decodedAdId) {
+          notFoundErrorMessage = `The ad data for "${decodedAdId}" appears to be missing or invalid.`;
+        } else if (!firstAd) {
+          notFoundErrorMessage = 'No ads are available to display.';
+        }
+        setError(notFoundErrorMessage);
+        setCurrentAdIndex(-1);
+        setLoading(false); 
+      }
+    }
+  }, [rawAdIdFromParams, allAds, router]); 
+
+  const handlePrevAd = useCallback(() => {
+    if (currentAdIndex <= 0 || isNavigating) return;
+    
+    setIsNavigating(true);
+    const prevAd = allAds[currentAdIndex - 1];
+    debouncedNavigate(`/preview/${prevAd.id}`);
+
+    setTimeout(() => setIsNavigating(false), 2000);
+  }, [currentAdIndex, allAds, debouncedNavigate, isNavigating]);
+
+  const handleNextAd = useCallback(() => {
+    if (currentAdIndex >= allAds.length - 1 || isNavigating) return;
+    
+    setIsNavigating(true);
+    const nextAd = allAds[currentAdIndex + 1];
+    debouncedNavigate(`/preview/${nextAd.id}`);
+    
+    setTimeout(() => setIsNavigating(false), 2000);
+  }, [currentAdIndex, allAds, debouncedNavigate, isNavigating]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        handlePrevAd();
+      } else if (e.key === 'ArrowRight') {
+        handleNextAd();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handlePrevAd, handleNextAd]);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-pulse w-[420px] h-[525px] rounded-xl bg-muted/40" />
       </div>
     );
   }
 
   if (!ad) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h1 className="text-2xl font-semibold mb-4">Ad not found</h1>
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
+        <h1 className="text-2xl font-semibold mb-4 text-foreground">Ad not found</h1>
         <p className="text-muted-foreground mb-6">The ad you're looking for doesn't exist or has been deleted.</p>
         <Button asChild>
-          <Link href="/dashboard">Return to Dashboard</Link>
+          <Link href="/static-ads">Return to Dashboard</Link>
         </Button>
       </div>
     );
@@ -196,135 +218,152 @@ export default function AdPreviewPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="border-b px-4 py-3 flex items-center justify-between sticky top-0 bg-background z-10">
-        <div className="flex items-center">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard')} className="mr-4">
-            <X className="h-4 w-4" />
-          </Button>
-          <h1 className="text-lg font-medium">Static Ads</h1>
+      {error && (
+        <div className="fixed inset-0 bg-destructive/10 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-background p-4 rounded-lg shadow-lg">
+            <p className="text-destructive text-center">{error}</p>
+          </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleShare}>
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
-          </Button>
-        </div>
-      </header>
+      )}
       
-      {/* Main content */}
-      <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Left side - Ad image */}
-          <div className="flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-medium">{ad.title}</h2>
-              <span className="text-sm text-muted-foreground">{formatDate(ad.created_at)}</span>
+      {isNavigating && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      )}
+      
+      <div className="flex flex-col flex-1">
+        <header className="w-full flex items-center justify-between px-6 py-4 border-b border-border bg-background">
+          <div className="flex items-center gap-2 min-w-[180px]">
+            <Button variant="ghost" size="icon" onClick={() => router.push('/static-ads')}>
+              <X className="h-5 w-5" />
+            </Button>
+            <span className="text-lg font-semibold tracking-tight text-foreground">Static Ads</span>
+          </div>
+          
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+            <span className="text-xl font-bold text-primary leading-tight">{ad.title}</span>
+            <span className="text-xs text-muted-foreground font-medium mt-1">{formatDate(ad.created_at)}</span>
+          </div>
+          
+          <div className="flex items-center gap-2 min-w-[120px] justify-end">
+            <Button
+              variant="secondary"
+              size="icon"
+              className="rounded-full w-10 h-10 shadow-md"
+              onClick={handlePrevAd}
+              disabled={currentAdIndex <= 0 || isNavigating}
+              aria-label="Previous Ad"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="rounded-full w-10 h-10 shadow-md"
+              onClick={handleNextAd}
+              disabled={currentAdIndex >= allAds.length - 1 || isNavigating}
+              aria-label="Next Ad"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </Button>
+          </div>
+        </header>
+        
+        <main className="flex flex-col items-center justify-center flex-1 w-full px-4 py-8 bg-background">
+          <div className="flex flex-col items-center w-full max-w-[min(90vw,440px)] mx-auto">
+            <div className="relative w-full max-w-full aspect-[4/5] rounded-xl overflow-hidden bg-muted/20 flex items-center justify-center shadow-sm">
+              {!imageLoaded && (
+                <div className="absolute inset-0 animate-pulse bg-muted/40 z-10 rounded-xl" />
+              )}
+              <Image
+                src={ad?.imageUrl || "/fallback-image.png"}
+                alt={ad?.title || "Ad image"}
+                fill
+                className={`object-contain w-full h-full transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'} rounded-xl`}
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setImageLoaded(true)}
+                priority
+              />
             </div>
             
-            <div className="relative aspect-[4/5] md:aspect-auto md:flex-1 border rounded-lg overflow-hidden bg-muted/10">
-              {ad.imageUrl ? (
-                <Image 
-                  src={ad.imageUrl} 
-                  alt={ad.title}
-                  fill
-                  className="object-contain"
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <p className="text-muted-foreground">No image available</p>
-                </div>
-              )}
-              
-              {/* Navigation buttons */}
-              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-between px-4">
-                <Button 
-                  variant="secondary" 
-                  size="icon" 
-                  className="rounded-full"
-                  onClick={handlePrevAd}
-                  disabled={currentAdIndex <= 0}
+            <div className="w-full text-center mt-6">
+              <h2 className="text-2xl font-bold text-foreground">{ad?.title}</h2>
+              <div className="w-full text-center mt-4">
+                <span
+                  className="text-sm text-muted-foreground block max-w-full truncate line-clamp-1"
+                  ref={descriptionRef}
                 >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="secondary" 
-                  size="icon" 
-                  className="rounded-full" 
-                  onClick={handleNextAd}
-                  disabled={currentAdIndex >= allAds.length - 1}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                  {ad.description ? trimDescription(ad.description) : ''}
+                  {ad.description && ad.description.length > 50 && (
+                    <>
+                      <span> </span>
+                      <button
+                        className="inline text-primary text-xs font-medium ml-1 focus:outline-none underline hover:opacity-80 transition-opacity"
+                        onClick={() => setShowDescriptionModal(true)}
+                        aria-label="Read full description"
+                      >
+                        Read more
+                      </button>
+                    </>
+                  )}
+                </span>
               </div>
               
-              {/* Download button */}
-              <Button 
-                variant="secondary" 
-                className="absolute bottom-4 left-1/2 -translate-x-1/2"
-                onClick={handleDownload}
+              <div className="flex justify-center gap-4 mt-6">
+                <Button 
+                  variant="outline" 
+                  className="flex gap-2 min-w-[120px]"
+                  onClick={handleDownload}
+                  disabled={!ad.imageUrl}
+                >
+                  <Download className="w-4 h-4" /> Download
+                </Button>
+                <Button 
+                  variant="default" 
+                  className="flex gap-2 min-w-[120px]"
+                  onClick={handleShare}
+                >
+                  <Share2 className="w-4 h-4" /> Share
+                </Button>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+      
+      {showDescriptionModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowDescriptionModal(false);
+          }}
+          aria-modal="true"
+          role="dialog"
+        >
+          <div className="bg-background rounded-xl shadow-xl max-w-md w-full mx-4 relative">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h3 className="text-lg font-semibold text-foreground">Description</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowDescriptionModal(false)}
+                aria-label="Close description dialog"
               >
-                <Download className="h-4 w-4 mr-2" />
-                Download the ad image
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <div className="px-6 py-4 text-sm text-foreground whitespace-pre-line">
+              {ad.description}
+            </div>
+            <div className="px-6 py-3 border-t border-border flex justify-end">
+              <Button variant="outline" onClick={() => setShowDescriptionModal(false)}>
+                Close
               </Button>
             </div>
           </div>
-          
-          {/* Right side - Details */}
-          <div className="w-full md:w-72 space-y-6">
-            <div>
-              <h3 className="text-sm font-medium mb-1">{ad.title}</h3>
-              <div className={`text-sm ${!showFullDescription ? 'line-clamp-5' : ''}`}>
-                {ad.description}
-              </div>
-              {ad.description && ad.description.length > 250 && (
-                <button 
-                  className="text-primary text-xs mt-1 font-medium"
-                  onClick={() => setShowFullDescription(!showFullDescription)}
-                >
-                  {showFullDescription ? 'Read less' : 'Read more'}
-                </button>
-              )}
-            </div>
-            
-            {/* Uploaded image */}
-            <div>
-              <h3 className="text-sm font-medium mb-2">Image</h3>
-              <div className="aspect-square w-20 h-20 relative rounded-md overflow-hidden border">
-                {ad.imageUrl ? (
-                  <Image 
-                    src={ad.imageUrl} 
-                    alt={ad.title}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
-                    <p className="text-xs text-muted-foreground">No image</p>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Aspect Ratio */}
-            <div>
-              <h3 className="text-sm font-medium mb-2">Aspect Ratio</h3>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="border rounded-md px-2 py-1 text-center text-sm">
-                  Square
-                </div>
-                <div className="border rounded-md px-2 py-1 text-center text-sm">
-                  Landscape
-                </div>
-                <div className="border rounded-md px-2 py-1 text-center text-sm">
-                  Portrait
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
