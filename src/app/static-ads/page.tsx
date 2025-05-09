@@ -79,30 +79,6 @@ export default function DashboardPage() {
           {/* Main (scrollable) gallery section */}
           <div className="flex-1 overflow-y-auto px-6 py-">
             <Tabs defaultValue="today">
-               <div className="flex items-center justify-between mb-3 w-full">
-                 <h2 className="text-lg font-medium">Static ad generations</h2>
-                 <div className="ml-auto flex gap-2">
-                   {(() => {
-                     const pathname = usePathname();
-                     return (
-                       <>
-                         <Link
-                           href="/dashboard"
-                           className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${pathname === '/dashboard' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-                         >
-                           Gallery
-                         </Link>
-                         <Link
-                           href="/static-ads"
-                           className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${pathname === '/static-ads' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-                         >
-                           Static Ads
-                         </Link>
-                       </>
-                     );
-                   })()}
-                 </div>
-               </div>
               <TabsContent value="today">
                 <AdLibrary adsInProgress={adsInProgress} />
               </TabsContent>

@@ -27,8 +27,7 @@ export default function AdPreviewPage() {
   const [allAds, setAllAds] = useState<Ad[]>([]);
   const [currentAdIndex, setCurrentAdIndex] = useState<number>(-1);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
+
   const descriptionRef = useRef<HTMLSpanElement | null>(null);
 
   const debouncedNavigate = useDebounce((url: string) => {
@@ -162,24 +161,16 @@ export default function AdPreviewPage() {
   }, [rawAdIdFromParams, allAds, router]); 
 
   const handlePrevAd = useCallback(() => {
-    if (currentAdIndex <= 0 || isNavigating) return;
-    
-    setIsNavigating(true);
+    if (currentAdIndex <= 0) return;
     const prevAd = allAds[currentAdIndex - 1];
     debouncedNavigate(`/preview/${prevAd.id}`);
-
-    setTimeout(() => setIsNavigating(false), 2000);
-  }, [currentAdIndex, allAds, debouncedNavigate, isNavigating]);
+  }, [currentAdIndex, allAds, debouncedNavigate]);
 
   const handleNextAd = useCallback(() => {
-    if (currentAdIndex >= allAds.length - 1 || isNavigating) return;
-    
-    setIsNavigating(true);
+    if (currentAdIndex >= allAds.length - 1) return;
     const nextAd = allAds[currentAdIndex + 1];
     debouncedNavigate(`/preview/${nextAd.id}`);
-    
-    setTimeout(() => setIsNavigating(false), 2000);
-  }, [currentAdIndex, allAds, debouncedNavigate, isNavigating]);
+  }, [currentAdIndex, allAds, debouncedNavigate]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -226,11 +217,7 @@ export default function AdPreviewPage() {
         </div>
       )}
       
-      {isNavigating && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      )}
+
       
       <div className="flex flex-col flex-1">
         <header className="w-full flex items-center justify-between px-6 py-4 border-b border-border bg-background">
@@ -252,7 +239,7 @@ export default function AdPreviewPage() {
               size="icon"
               className="rounded-full w-10 h-10 shadow-md"
               onClick={handlePrevAd}
-              disabled={currentAdIndex <= 0 || isNavigating}
+              disabled={currentAdIndex <= 0}
               aria-label="Previous Ad"
             >
               <ChevronLeft className="w-6 h-6" />
@@ -262,7 +249,7 @@ export default function AdPreviewPage() {
               size="icon"
               className="rounded-full w-10 h-10 shadow-md"
               onClick={handleNextAd}
-              disabled={currentAdIndex >= allAds.length - 1 || isNavigating}
+              disabled={currentAdIndex >= allAds.length - 1}
               aria-label="Next Ad"
             >
               <ChevronRight className="w-6 h-6" />
@@ -273,16 +260,11 @@ export default function AdPreviewPage() {
         <main className="flex flex-col items-center justify-center flex-1 w-full px-4 py-8 bg-background">
           <div className="flex flex-col items-center w-full max-w-[min(90vw,440px)] mx-auto">
             <div className="relative w-full max-w-full aspect-[4/5] rounded-xl overflow-hidden bg-muted/20 flex items-center justify-center shadow-sm">
-              {!imageLoaded && (
-                <div className="absolute inset-0 animate-pulse bg-muted/40 z-10 rounded-xl" />
-              )}
               <Image
                 src={ad?.imageUrl || "/fallback-image.png"}
                 alt={ad?.title || "Ad image"}
                 fill
-                className={`object-contain w-full h-full transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'} rounded-xl`}
-                onLoad={() => setImageLoaded(true)}
-                onError={() => setImageLoaded(true)}
+                className="object-contain w-full h-full rounded-xl"
                 priority
               />
             </div>

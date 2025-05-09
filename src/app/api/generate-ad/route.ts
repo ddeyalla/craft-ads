@@ -3,6 +3,7 @@ import OpenAI, { toFile } from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
+import { cookies } from 'next/headers';
 
 // Ensure the API key is available
 if (!process.env.OPENAI_API_KEY) {
@@ -29,6 +30,26 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
+    // Get the authentication header from the request
+    const authHeader = request.headers.get('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    
+    // Verify the JWT token with Supabase
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user?.id) {
+      console.error('Auth error:', authError);
+      return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
+    }
+    
+    const userId = user.id;
+    console.log(`[Auth] Request from authenticated user: ${userId}`);
+
     const body = await request.json();
     const { title, description, imageBase64, aspectRatio = '1:1' } = body;
 
@@ -276,10 +297,23 @@ TONE AND FORMAT
     }
 
     // --- Return final result ---
-    const responsePayload = { adCopy, imageUrl: finalImageUrl };
+    const responsePayload = {
+      id: uuidv4(),
+      title,
+      description,
+      adCopy, 
+      imageUrl: finalImageUrl,
+      user_id: userId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
     console.log('[API Success] Preparing final response payload:', {
+      id: responsePayload.id,
+      title: responsePayload.title,
       adCopy: responsePayload.adCopy,
-      imageUrl: responsePayload.imageUrl ? responsePayload.imageUrl.substring(0, 100) + '...' : 'null'
+      imageUrl: responsePayload.imageUrl ? responsePayload.imageUrl.substring(0, 100) + '...' : 'null',
+      user_id: responsePayload.user_id
     });
     return NextResponse.json(responsePayload);
 

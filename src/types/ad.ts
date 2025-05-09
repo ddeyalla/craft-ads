@@ -5,4 +5,5 @@ export interface Ad {
   imageUrl: string;
   created_at: string;
   updated_at: string;
+  user_id?: string; // The Supabase user ID of the ad creator
 }

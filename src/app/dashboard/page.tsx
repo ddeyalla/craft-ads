@@ -4,23 +4,32 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, ArrowRightIcon } from 'lucide-react'; // Assuming you have ArrowRightIcon or similar
-import { Ad } from '@/types/ad'; // Assuming this type exists and is correct
+import { CalendarIcon, ArrowRightIcon } from 'lucide-react'; 
+import { Ad } from '@/types/ad'; 
+import { AuthRequiredWrapper } from '@/components/auth/AuthRequiredWrapper';
+import { useAuth } from '@/lib/context/auth-context';
 
 export default function NewDashboardPage() {
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userName, setUserName] = useState('Divyanshu'); // Or fetch dynamically if needed
+  const { profile, user } = useAuth();
 
   useEffect(() => {
+    if (!user?.id) return;
+    
     const storedAdsString = localStorage.getItem('ads');
     if (storedAdsString) {
       try {
         const parsedAds: Ad[] = JSON.parse(storedAdsString);
+        
+        // Filter ads to only show the current user's ads
+        const userAds = parsedAds.filter(ad => ad.user_id === user.id);
+        
         // Sort ads by creation date, newest first
-        const sortedAds = [...parsedAds].sort((a, b) => 
+        const sortedAds = [...userAds].sort((a, b) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
+        
         setAds(sortedAds);
       } catch (error) {
         console.error('Failed to parse ads from localStorage:', error);
@@ -28,27 +37,25 @@ export default function NewDashboardPage() {
       }
     }
     setLoading(false);
-  }, []);
+  }, [user?.id]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Welcome, {userName}</h1>
-        </div>
+    <AuthRequiredWrapper>
+      <div className="min-h-screen bg-background text-foreground">
+        <header className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">
+              Welcome, {profile?.full_name || user?.user_metadata?.full_name || 'there'}
+            </h1>
+          </div>
         <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-          <Link href="/static-ads" className="text-sm font-medium text-primary hover:underline flex items-center">
-            View ad galley <ArrowRightIcon className="ml-1 h-4 w-4" />
-          </Link>
           <Button variant="outline">
             <CalendarIcon className="mr-2 h-4 w-4" /> Book a call with the founder
           </Button>
         </div>
       </header>
 
-      <main className="px-4 sm:px-6 lg:px-8 py-8">
-        <h2 className="text-xl sm:text-2xl font-semibold mb-6">Recently generated ads</h2>
-        
+      <main className="px-4 sm:px-6 lg:px-8 py-8">        
         {loading && (
           <div className="text-center py-10">
             <p>Loading ads...</p> {/* Replace with a spinner/skeleton later if desired */}
@@ -94,5 +101,6 @@ export default function NewDashboardPage() {
         )}
       </main>
     </div>
+    </AuthRequiredWrapper>
   );
 }
