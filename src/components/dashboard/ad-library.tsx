@@ -9,7 +9,8 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AdCard } from './ad-card';
+import { AdCard, AdStatus } from './ad-card';
+import { AdInProgress } from '@/app/dashboard/page';
 
 // Add Ad type for static ads and fix Image src error
 type Ad = {
@@ -20,6 +21,7 @@ type Ad = {
   title: string;
   description: string;
   imageUrl: string;
+  originalIndex?: number; // Add originalIndex property
 };
 
 interface StoredAd {
@@ -30,7 +32,11 @@ interface StoredAd {
   imageUrl: string;
 }
 
-export default function AdLibrary() {
+interface AdLibraryProps {
+  adsInProgress: AdInProgress[];
+}
+
+export default function AdLibrary({ adsInProgress }: AdLibraryProps) {
   const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const router = useRouter();
@@ -40,23 +46,29 @@ export default function AdLibrary() {
   const [storedAds, setStoredAds] = useState<StoredAd[]>([]);
   const isLoading = false;
 
-  useEffect(() => {
-    console.log('[AdLibrary] Initializing and attempting to load ads from localStorage...');
+  // Function to load ads from localStorage
+  const loadAdsFromStorage = () => {
+    console.log('[AdLibrary] Loading ads from localStorage...');
     const storedAdsString = localStorage.getItem('ads');
     if (storedAdsString) {
       try {
         const storedAds: StoredAd[] = JSON.parse(storedAdsString);
         setStoredAds(storedAds);
         const ads: Ad[] = storedAds.map((ad, idx) => ({
-          id: `${ad.id}-${ad.title}-${idx}`,
+          id: ad.id, // Use just the original ID without additional complexity
           headline: ad.title,
           image_url: ad.imageUrl,
-          created_at: new Date().toISOString(),
+          created_at: ad.id || new Date().toISOString(), // Use id as timestamp or current time
           title: ad.title,
           description: ad.description,
           imageUrl: ad.imageUrl,
+          originalIndex: idx, // Store original index for reference
         }));
-        setAds(ads);
+        // Sort ads by date - newest first
+        const sortedAds = [...ads].sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setAds(sortedAds);
         console.log(`[AdLibrary] Successfully loaded ${storedAds.length} ads from localStorage.`);
       } catch (error) {
         console.error('[AdLibrary] Error parsing ads JSON from localStorage:', error);
@@ -67,6 +79,37 @@ export default function AdLibrary() {
     } else {
       console.log('[AdLibrary] No ads found in localStorage.');
     }
+  };
+
+  // Initial load on component mount
+  useEffect(() => {
+    loadAdsFromStorage();
+  }, []);
+  
+  // Listen for storage events to auto-sync when ads are updated
+  useEffect(() => {
+    // Custom event listener for storage updates
+    const handleStorageChange = () => {
+      console.log('[AdLibrary] Storage change detected, reloading ads...');
+      loadAdsFromStorage();
+    };
+
+    // Listen for storage events
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for a custom event that can be triggered from anywhere in the app
+    window.addEventListener('ads-updated', handleStorageChange);
+    
+    // Set up a polling mechanism to check for updates every 2 seconds
+    const intervalId = setInterval(() => {
+      loadAdsFromStorage();
+    }, 2000);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('ads-updated', handleStorageChange);
+      clearInterval(intervalId);
+    };
   }, []);
 
   function handleDownload(imageUrl: string | undefined, id: string, title: string) {
@@ -109,7 +152,7 @@ export default function AdLibrary() {
       const updatedStoredAds = [...storedAds, newAd];
       setStoredAds(updatedStoredAds);
       localStorage.setItem('ads', JSON.stringify(updatedStoredAds));
-      const newAds = [...ads, {
+      const newAdItem = {
         id: `${newAd.id}-${newAd.title}-${updatedStoredAds.length - 1}`,
         headline: newAd.title,
         image_url: newAd.imageUrl,
@@ -117,7 +160,9 @@ export default function AdLibrary() {
         title: newAd.title,
         description: newAd.description,
         imageUrl: newAd.imageUrl,
-      }];
+      };
+      // Add new ad at the beginning of the array (newest first)
+      const newAds = [newAdItem, ...ads];
       setAds(newAds);
       toast.success('Ad duplicated successfully');
     } catch (error) {
@@ -140,22 +185,39 @@ export default function AdLibrary() {
             </div>
           ))}
         </div>
-      ) : ads && ads.length > 0 ? (
+      ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {/* Display ads in progress first */}
+          {adsInProgress.map(ad => (
+            <AdCard
+              key={ad.id}
+              adCopy={ad.title}
+              productTitle={ad.description}
+              status={ad.status}
+            />
+          ))}
+          
+          {/* Display completed ads */}
           {ads.map(ad => (
             <AdCard
               key={ad.id}
+              id={ad.id}
               imageUrl={ad.imageUrl}
               adCopy={ad.headline}
               productTitle={ad.title}
               onDelete={() => handleDelete(ad)}
+              status="generated"
+              createdAt={ad.created_at}
             />
           ))}
-        </div>
-      ) : (
-        <div className="text-center py-12 border rounded-md">
-          <p className="text-muted-foreground">No ads created yet</p>
-          <p className="text-sm text-muted-foreground mt-1">Generate your first ad using the form</p>
+          
+          {/* Show empty state if no ads at all */}
+          {ads.length === 0 && adsInProgress.length === 0 && (
+            <div className="text-center py-12 border rounded-md">
+              <p className="text-muted-foreground">No ads created yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Generate your first ad using the form</p>
+            </div>
+          )}
         </div>
       )}
       

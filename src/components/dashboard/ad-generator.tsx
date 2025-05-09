@@ -7,7 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAdGeneration } from '@/app/dashboard/page';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -58,13 +59,25 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.webp'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/gif': ['.gif'],
+      'image/webp': ['.webp']
     },
     maxFiles: 1,
     maxSize: 5242880, // 5MB
     onDrop: (acceptedFiles) => {
       if (acceptedFiles && acceptedFiles.length > 0) {
         const file = acceptedFiles[0];
+        // Additional validation to ensure the file is actually an image
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+          toast.error('Unsupported image format', {
+            description: 'Please upload a PNG, JPEG, GIF, or WEBP image.',
+          });
+          return;
+        }
+        
         setSelectedFile(file);
         const url = URL.createObjectURL(file);
         setPreviewUrl(url);
@@ -75,6 +88,10 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
         if (rejection.errors[0].code === 'file-too-large') {
           toast.error('Image is too large', {
             description: 'Please upload an image smaller than 5MB',
+          });
+        } else if (rejection.errors[0].code === 'file-invalid-type') {
+          toast.error('Unsupported image format', {
+            description: 'Please upload a PNG, JPEG, GIF, or WEBP image.',
           });
         } else {
           toast.error('Invalid file', {
@@ -129,24 +146,74 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
     }
   }
 
+  // Get context for ad generation state management
+  const { addSubmittedAd, updateAdStatus, removeAdInProgress } = useAdGeneration();
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!selectedFile) {
       toast.error('Please upload an image');
       return;
     }
 
+    // Only disable the form temporarily while we prepare the submission
+    // but enable it back quickly to allow concurrent submissions
     setIsLoading(true);
     
     try {
       console.log('[AdGenerator] Generating ad with:', values);
       
-      const imageBase64 = await toBase64(selectedFile);
+      // Store the form values and file for processing
+      const formData = { ...values };
+      const fileToProcess = selectedFile;
+      
+      // Add a new ad in 'submitted' state
+      const adId = addSubmittedAd(values.title, values.description);
+      
+      // Reset form immediately to allow for new submissions
+      form.reset();
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      
+      // Re-enable the form
+      setIsLoading(false);
+      
+      // Update to 'generating' state
+      setTimeout(() => {
+        updateAdStatus(adId, 'generating');
+      }, 500); // Short delay for visual feedback
+      
+      // Process the ad generation in the background
+      processAdGeneration(adId, formData, fileToProcess);
+      
+      // Show a toast notification that the job has started
+      toast.success('Ad generation started', {
+        description: 'Your ad is being generated in the background',
+      });
+      
+    } catch (error) {
+      console.error('[AdGenerator] Error preparing ad generation:', error);
+      toast.error('Error preparing ad generation', {
+        description: error instanceof Error ? error.message : 'Please try again',
+      });
+      setIsLoading(false);
+    }
+  }
+  
+  // Function to process ad generation in the background
+  async function processAdGeneration(
+    adId: string, 
+    formData: z.infer<typeof formSchema>, 
+    fileToProcess: File
+  ) {
+    try {
+      const imageBase64 = await toBase64(fileToProcess);
       const payload = {
-        title: values.title,
-        description: values.description,
-        aspectRatio: values.aspectRatio,
+        title: formData.title,
+        description: formData.description,
+        aspectRatio: formData.aspectRatio,
         imageBase64,
       };
+      
       const response = await fetch('/api/generate-ad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -155,32 +222,38 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
       
       if (!response.ok) {
         const errorData = await response.json();
+        // Remove the in-progress ad on error
+        removeAdInProgress(adId);
         throw new Error(errorData.error || errorData.message || 'Failed to generate ad');
       }
       
       const data = await response.json();
       console.log('[AdGenerator] API response:', data);
       
+      // Remove the in-progress ad as it's now complete
+      removeAdInProgress(adId);
+      
       // Save the generated ad
       saveAd({
-        title: values.title,
-        description: values.description,
+        title: formData.title,
+        description: formData.description,
         adCopy: data.adCopy,
         imageUrl: data.imageUrl,
       });
       
-      // Reset form
-      form.reset();
-      setSelectedFile(null);
-      setPreviewUrl(null);
+      // Dispatch a custom event to notify that ads have been updated
+      window.dispatchEvent(new Event('ads-updated'));
+      
+      // Show success notification
+      toast.success('Ad generated successfully', {
+        description: 'Your ad has been added to the gallery',
+      });
       
     } catch (error) {
       console.error('[AdGenerator] Error generating ad:', error);
       toast.error('Error generating ad', {
         description: error instanceof Error ? error.message : 'Please try again',
       });
-    } finally {
-      setIsLoading(false);
     }
   }
 
