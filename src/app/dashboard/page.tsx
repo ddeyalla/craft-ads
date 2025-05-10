@@ -5,9 +5,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { CalendarIcon, ArrowRightIcon } from 'lucide-react'; 
-import { Ad } from '@/types/ad'; 
+import { Ad, AdStatus } from '@/types/ad'; 
 import { AuthRequiredWrapper } from '@/components/auth/AuthRequiredWrapper';
 import { useAuth } from '@/lib/context/auth-context';
+import { AdCard } from '@/components/dashboard/ad-card';
 
 export default function NewDashboardPage() {
   const [ads, setAds] = useState<Ad[]>([]);
@@ -71,31 +72,15 @@ export default function NewDashboardPage() {
         {!loading && ads.length > 0 && (
           <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
             {ads.map((ad) => (
-              <Link
+              <AdCard
                 key={ad.id}
-                href={`/preview/${ad.id}`}
-                className="block mb-4 break-inside-avoid group"
-              >
-                <div className="overflow-hidden rounded-lg bg-muted group-hover:opacity-75 transition-opacity">
-                  {ad.imageUrl ? (
-                    <Image
-                      src={ad.imageUrl}
-                      alt={ad.title || 'Generated ad image'}
-                      width={300}
-                      height={400}
-                      className="object-cover w-full h-auto rounded-lg"
-                      priority={ads.indexOf(ad) < 10}
-                    />
-                  ) : (
-                    <div className="w-full h-48 flex items-center justify-center bg-muted-foreground/10">
-                      <span className="text-xs text-muted-foreground">No image</span>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-2">
-                  <h3 className="text-base font-medium line-clamp-2">{ad.title}</h3>
-                </div>
-              </Link>
+                id={ad.id}
+                imageUrl={ad.imageUrl}
+                adCopy={ad.adCopy}
+                productTitle={ad.productTitle}
+                status={ad.status}
+                createdAt={ad.created_at}
+              />
             ))}
           </div>
         )}

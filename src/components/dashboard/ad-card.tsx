@@ -6,14 +6,8 @@ import { useRouter } from "next/navigation";
 import { MoreHorizontal, Download, Share2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-export type AdStatus = 'submitted' | 'generating' | 'generated';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AdStatus } from "@/types/ad";
 
 interface AdCardProps {
   id?: string; // Add id prop for preview navigation
@@ -48,7 +42,7 @@ export function AdCard({ id, imageUrl, adCopy, productTitle, onDelete, status = 
       link.href = downloadUrl;
       
       // Generate filename from product title or use a default name
-      const filename = `${productTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-ad.jpg`;
+      const filename = `${productTitle?.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'ad'}-ad.jpg`;
       link.download = filename;
       
       // Trigger download
@@ -84,22 +78,33 @@ export function AdCard({ id, imageUrl, adCopy, productTitle, onDelete, status = 
             <p className="text-xs text-muted-foreground mt-1">This may take a moment...</p>
           </div>
         );
+      case 'error':
+        return (
+          <div className="relative aspect-square flex flex-col items-center justify-center bg-red-500/10">
+            <p className="text-sm font-medium text-red-700">Generation Failed</p>
+            <p className="text-xs text-muted-foreground mt-1">Please try again later.</p>
+            {/* Optionally, add a retry button or more info here */}
+          </div>
+        );
       case 'generated':
       default:
+        if (!imageUrl) {
+          // console.warn(`[AdCard] Image URL is missing for generated ad ID ${id}`);
+          return (
+            <div className="relative aspect-square flex flex-col items-center justify-center bg-muted">
+              <p className="text-sm font-medium text-muted-foreground">Image Not Available</p>
+            </div>
+          );
+        }
+        console.log(`[AdCard] Image URL for ad ID ${id}: ${imageUrl}`); // Log the image URL
         return (
-          <div className="relative aspect-square">
-            {imageUrl ? (
-              <Image 
-                src={imageUrl} 
-                alt={adCopy}
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full bg-muted/30">
-                <p className="text-sm text-muted-foreground">Image unavailable</p>
-              </div>
-            )}
+          <div className="relative aspect-square group">
+            <Image 
+              src={imageUrl} 
+              alt={adCopy}
+              fill
+              className="object-cover"
+            />
           </div>
         );
     }
@@ -133,10 +138,11 @@ export function AdCard({ id, imageUrl, adCopy, productTitle, onDelete, status = 
             variant="secondary" 
             size="icon" 
             className="h-8 w-8"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent card click navigation
               setIsSharing(true);
               // Create a shareable link (in a real app, this would be a unique URL)
-              const shareableLink = `${window.location.origin}/shared-ad?img=${encodeURIComponent(imageUrl || '')}&title=${encodeURIComponent(productTitle)}`;
+              const shareableLink = `${window.location.origin}/preview/${id}`;
               
               // Copy to clipboard
               navigator.clipboard.writeText(shareableLink)
@@ -156,7 +162,12 @@ export function AdCard({ id, imageUrl, adCopy, productTitle, onDelete, status = 
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="secondary" size="icon" className="h-8 w-8">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8"
+                onClick={(e) => e.stopPropagation()} // Prevent card click navigation
+              >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

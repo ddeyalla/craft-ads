@@ -27,6 +27,8 @@ export default function AdPreviewPage() {
   const [allAds, setAllAds] = useState<Ad[]>([]);
   const [currentAdIndex, setCurrentAdIndex] = useState<number>(-1);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  const [isImageLoaded, setImageLoaded] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const descriptionRef = useRef<HTMLSpanElement | null>(null);
 
@@ -54,7 +56,7 @@ export default function AdPreviewPage() {
       const link = document.createElement('a');
       link.href = downloadUrl;
       
-      const filename = `${ad.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-ad.jpg`;
+      const filename = `${ad.adCopy.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-ad.jpg`;
       link.download = filename;
       
       document.body.appendChild(link);
@@ -92,14 +94,15 @@ export default function AdPreviewPage() {
       return;
     }
     const storedAds = JSON.parse(storedAdsString);
-    const formattedAds: Ad[] = storedAds.map((ad: any, idx: number) => ({
-      id: ad.id,
-      headline: ad.title,
-      image_url: ad.imageUrl,
-      created_at: ad.id || new Date().toISOString(),
-      title: ad.title,
-      description: ad.description,
-      imageUrl: ad.imageUrl,
+    const formattedAds: Ad[] = storedAds.map((adData: any, idx: number) => ({
+      id: adData.id || `ad-${idx}-${Date.now()}`,
+      adCopy: adData.title || adData.headline || '',
+      productTitle: adData.description || '',
+      imageUrl: adData.imageUrl || adData.image_url || '',
+      status: adData.status || 'generated',
+      created_at: adData.created_at || new Date().toISOString(),
+      updated_at: adData.updated_at || new Date().toISOString(),
+      user_id: adData.user_id,
       originalIndex: idx,
     }));
     const sortedAds = [...formattedAds].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -229,7 +232,7 @@ export default function AdPreviewPage() {
           </div>
           
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-            <span className="text-xl font-bold text-primary leading-tight">{ad.title}</span>
+            <span className="text-xl font-bold text-primary leading-tight">{ad.adCopy}</span>
             <span className="text-xs text-muted-foreground font-medium mt-1">{formatDate(ad.created_at)}</span>
           </div>
           
@@ -262,7 +265,7 @@ export default function AdPreviewPage() {
             <div className="relative w-full max-w-full aspect-[4/5] rounded-xl overflow-hidden bg-muted/20 flex items-center justify-center shadow-sm">
               <Image
                 src={ad?.imageUrl || "/fallback-image.png"}
-                alt={ad?.title || "Ad image"}
+                alt={ad?.adCopy || "Ad image"}
                 fill
                 className="object-contain w-full h-full rounded-xl"
                 priority
@@ -270,14 +273,14 @@ export default function AdPreviewPage() {
             </div>
             
             <div className="w-full text-center mt-6">
-              <h2 className="text-2xl font-bold text-foreground">{ad?.title}</h2>
+              <h2 className="text-2xl font-bold text-foreground">{ad?.adCopy}</h2>
               <div className="w-full text-center mt-4">
                 <span
                   className="text-sm text-muted-foreground block max-w-full truncate line-clamp-1"
                   ref={descriptionRef}
                 >
-                  {ad.description ? trimDescription(ad.description) : ''}
-                  {ad.description && ad.description.length > 50 && (
+                  {ad.productTitle ? trimDescription(ad.productTitle) : ''}
+                  {ad.productTitle && ad.productTitle.length > 50 && (
                     <>
                       <span> </span>
                       <button
@@ -336,7 +339,7 @@ export default function AdPreviewPage() {
               </Button>
             </div>
             <div className="px-6 py-4 text-sm text-foreground whitespace-pre-line">
-              {ad.description}
+              {ad.productTitle}
             </div>
             <div className="px-6 py-3 border-t border-border flex justify-end">
               <Button variant="outline" onClick={() => setShowDescriptionModal(false)}>

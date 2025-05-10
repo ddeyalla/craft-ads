@@ -7,6 +7,7 @@ import "./globals.css";
 import ReactQueryProvider from "@/app/react-query-provider";
 import MainSidebar from '@/components/layout/MainSidebar';
 import { AuthProvider } from "@/lib/context/auth-context";
+import { Toaster } from 'sonner';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,6 +47,7 @@ export default function RootLayout({
             <main className="flex-1 bg-background sm:ml-64">
               <ReactQueryProvider>
                 {children}
+                <Toaster position="bottom-right" richColors />
               </ReactQueryProvider>
             </main>
           </div>

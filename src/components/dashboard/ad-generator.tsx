@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -214,11 +215,16 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
         imageBase64,
       };
       
-      const response = await fetch('/api/generate-ad', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const session = await supabase.auth.getSession();
+const accessToken = session.data.session?.access_token;
+const response = await fetch('/api/generate-ad', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+  },
+  body: JSON.stringify(payload),
+});
       
       if (!response.ok) {
         const errorData = await response.json();

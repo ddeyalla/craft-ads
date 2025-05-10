@@ -8,7 +8,7 @@ import { Header } from "@/components/dashboard/header";
 import AdGenerator from "@/components/dashboard/ad-generator";
 import AdLibrary from "@/components/dashboard/ad-library";
 import { toast } from "sonner";
-import { AdStatus } from "@/components/dashboard/ad-card";
+import { Ad, AdStatus } from "@/types/ad";
 
 // Define the type for an ad in progress
 export type AdInProgress = {
