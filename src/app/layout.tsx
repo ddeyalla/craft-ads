@@ -8,6 +8,7 @@ import ReactQueryProvider from "@/app/react-query-provider";
 import MainSidebar from '@/components/layout/MainSidebar';
 import { AuthProvider } from "@/lib/context/auth-context";
 import { Toaster } from 'sonner';
+import { StagewiseToolbar } from '@stagewise/toolbar-next';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,9 +27,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const stagewiseConfig = { plugins: [] };
+  
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}>
+        {process.env.NODE_ENV === 'development' && <StagewiseToolbar config={stagewiseConfig} />}
         <AuthProvider>
           {/* Hamburger button for mobile */}
           <button

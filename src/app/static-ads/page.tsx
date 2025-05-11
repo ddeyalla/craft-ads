@@ -9,6 +9,7 @@ import AdGenerator from "@/components/dashboard/ad-generator";
 import AdLibrary from "@/components/dashboard/ad-library";
 import { toast } from "sonner";
 import { Ad, AdStatus } from "@/types/ad";
+import { AdApiResponse } from '@/components/dashboard/ad-generator';
 
 // Define the type for an ad in progress
 export type AdInProgress = {
@@ -34,8 +35,6 @@ const AdGenerationContext = createContext<AdGenerationContextType>({
 });
 
 export const useAdGeneration = () => useContext(AdGenerationContext);
-
-import { AdGenerationProvider } from './ad-generation-context';
 
 export default function DashboardPage() {
   // State for ads in different stages of generation
@@ -70,14 +69,14 @@ export default function DashboardPage() {
       <div className="h-screen flex flex-col overflow-hidden">
         {/* Fixed top nav */}
         <div className="sticky top-0 bg-background w-full">
-          <div className="px-6 py-3">
+          <div className="h-14 px-0">
             <Header title="Static ad generations" />
           </div>
         </div>
         
         <div className="flex flex-1 h-[calc(100vh-72px)]">
           {/* Main (scrollable) gallery section */}
-          <div className="flex-1 overflow-y-auto px-6 py-">
+          <div className="flex-1 overflow-y-auto p-5">
             <Tabs defaultValue="today">
               <TabsContent value="today">
                 <AdLibrary adsInProgress={adsInProgress} />
@@ -90,11 +89,51 @@ export default function DashboardPage() {
             </Tabs>
           </div>
           {/* Fixed ad form on the right */}
-          <div className="hidden lg:block lg:w-[380px] shrink-0 border-l bg-background px-6 py-1.5 overflow-y-auto max-h-full">
-            <AdGenerator onSuccess={() => {
-              toast.success("Ad created successfully", {
-                description: "Your ad has been generated and saved to the library.",
-              });
+          <div className="hidden lg:block lg:w-[380px] shrink-0 border-l bg-background p-5 overflow-y-auto max-h-full">
+            <AdGenerator onSuccess={(generatedAdFromApi: AdApiResponse) => {
+              console.log('[StaticAdsPage] AdGenerator onSuccess, data from API:', generatedAdFromApi);
+              
+              // Construct the new Ad object for localStorage
+              const newAdToStore: Ad = {
+                id: generatedAdFromApi.id,
+                adCopy: generatedAdFromApi.adCopy,          // Generated ad copy/headline
+                productTitle: generatedAdFromApi.title,     // Original product title from API
+                imageUrl: generatedAdFromApi.imageUrl,     
+                status: 'generated',                       // Set status to generated
+                user_id: generatedAdFromApi.user_id,       
+                created_at: generatedAdFromApi.created_at, 
+                updated_at: generatedAdFromApi.updated_at, 
+              };
+
+              try {
+                const existingAdsString = localStorage.getItem('ads');
+                const existingAds: Ad[] = existingAdsString ? JSON.parse(existingAdsString) : [];
+                
+                // Add the new ad (ensure no duplicates if re-processing, though API ID should be unique)
+                const updatedAds = [newAdToStore, ...existingAds.filter(ad => ad.id !== newAdToStore.id)];
+                localStorage.setItem('ads', JSON.stringify(updatedAds));
+                
+                console.log('[StaticAdsPage] New ad saved to localStorage. Total ads:', updatedAds.length);
+                
+                // Notify other components (like AdLibrary or Dashboard) that ads have been updated
+                window.dispatchEvent(new CustomEvent('ads-updated'));
+                
+                toast.success("Ad created successfully!", {
+                  description: "Your new ad has been generated and saved to your library.",
+                });
+
+                // Optionally, if you want to remove it from the 'inProgress' list managed by the context:
+                // const adInProgressId = adsInProgress.find(ad => ad.title === generatedAdFromApi.title && ad.description === generatedAdFromApi.description)?.id;
+                // if (adInProgressId) {
+                //   removeAdInProgress(adInProgressId); // This might need adjustment if IDs don't match or multiple identical submissions are possible
+                // }
+
+              } catch (error) {
+                console.error('[StaticAdsPage] Error saving new ad to localStorage:', error);
+                toast.error('Failed to save ad to library', {
+                  description: error instanceof Error ? error.message : 'Please check console for details.'
+                });
+              }
             }} />
           </div>
         </div>

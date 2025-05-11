@@ -17,6 +17,19 @@ import { Download, Upload, Loader2 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Label } from "@/components/ui/label";
 
+// Define the expected API response structure
+export type AdApiResponse = {
+  id: string;
+  title: string; // This is the original product title from input
+  description: string; // Original product description from input
+  adCopy: string; // Generated ad copy/headline
+  imageUrl: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  // status is implicitly 'generated'
+};
+
 const formSchema = z.object({
   title: z.string().min(2, {
     message: 'Title must be at least 2 characters.',
@@ -27,24 +40,7 @@ const formSchema = z.object({
   aspectRatio: z.enum(['1:1', '16:9', '9:16']),
 });
 
-// Types 
-type Ad = {
-  id: string;
-  title: string;
-  description: string;
-  adCopy: string;
-  imageUrl?: string;
-};
-
-type StoredAd = {
-  id: string;
-  title: string;
-  description: string;
-  adCopy: string;
-  imageUrl: string;
-};
-
-export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
+export default function AdGenerator({ onSuccess }: { onSuccess: (generatedAd: AdApiResponse) => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -110,41 +106,6 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
       reader.onload = () => resolve(reader.result as string);
       reader.onerror = (error) => reject(error);
     });
-  }
-
-  function saveAd(adData: { title: string; description: string; adCopy: string; imageUrl: string; }) {
-    const newAd: StoredAd = {
-      id: new Date().toISOString(),
-      title: adData.title,
-      description: adData.description,
-      adCopy: adData.adCopy,
-      imageUrl: adData.imageUrl,
-    };
-
-    try {
-      // Get existing ads from localStorage
-      const existingAdsString = localStorage.getItem('ads');
-      const existingAds: StoredAd[] = existingAdsString ? JSON.parse(existingAdsString) : [];
-      
-      // Add the new ad and save
-      const updatedAds = [...existingAds, newAd];
-      localStorage.setItem('ads', JSON.stringify(updatedAds));
-      
-      console.log('[AdGenerator] Ad saved to localStorage. Total ads:', updatedAds.length);
-      
-      // Dispatch storage event to notify other components
-      window.dispatchEvent(new Event('storage'));
-      
-      toast.success('Ad saved successfully', {
-        description: 'Your ad has been added to the library',
-      });
-      
-      // Call success callback
-      onSuccess();
-    } catch (error) {
-      console.error('[AdGenerator] Error saving ad to localStorage:', error);
-      toast.error('Failed to save ad');
-    }
   }
 
   // Get context for ad generation state management
@@ -216,15 +177,15 @@ export default function AdGenerator({ onSuccess }: { onSuccess: () => void }) {
       };
       
       const session = await supabase.auth.getSession();
-const accessToken = session.data.session?.access_token;
-const response = await fetch('/api/generate-ad', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
-  },
-  body: JSON.stringify(payload),
-});
+      const accessToken = session.data.session?.access_token;
+      const response = await fetch('/api/generate-ad', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -236,23 +197,20 @@ const response = await fetch('/api/generate-ad', {
       const data = await response.json();
       console.log('[AdGenerator] API response:', data);
       
-      // Remove the in-progress ad as it's now complete
+      // Update status in context (optional, if still needed for UI)
+      updateAdStatus(adId, 'generated');
+
+      // Call the onSuccess prop with the API data
+      onSuccess(data as AdApiResponse);
+      
+      // Remove the in-progress ad from the local context state as it's now handled by the parent
       removeAdInProgress(adId);
       
-      // Save the generated ad
-      saveAd({
-        title: formData.title,
-        description: formData.description,
-        adCopy: data.adCopy,
-        imageUrl: data.imageUrl,
-      });
-      
-      // Dispatch a custom event to notify that ads have been updated
-      window.dispatchEvent(new Event('ads-updated'));
-      
-      // Show success notification
-      toast.success('Ad generated successfully', {
-        description: 'Your ad has been added to the gallery',
+      // The actual saving to localStorage and global notification will be handled by static-ads/page.tsx
+      // Toast can be moved to static-ads page after successful save there
+      // For now, let's keep it to see if generation itself succeeded API-wise
+      toast.success('Ad data received from API', {
+        description: 'Processing and saving to library...',
       });
       
     } catch (error) {
@@ -342,7 +300,7 @@ const response = await fetch('/api/generate-ad', {
               <FormItem className="space-y-3">
                 <FormLabel>Aspect Ratio</FormLabel>
                 <FormControl>
-                  <div className="flex w-full justify-center">
+                  <div className="flex w-full justify-start">
                     <ToggleGroup
                       type="single"
                       value={field.value}

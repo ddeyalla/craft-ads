@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  LayoutGrid,
+  Home,
   Image,
   Video,
   Users,
@@ -22,8 +22,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const routes = [
   {
-    label: "Dashboard",
-    icon: LayoutGrid,
+    label: "Home",
+    icon: Home,
     href: "/dashboard",
     color: "text-slate-500",
   },
@@ -102,7 +102,7 @@ export default function MainSidebar({ open, setOpen }: MainSidebarProps) {
       <aside
         className={
           cn(
-            "fixed top-0 left-0 z-40 w-64 h-screen transition-transform bg-background border-r flex flex-col space-y-4 py-4",
+            "fixed top-0 left-0 z-40 w-64 h-screen transition-transform bg-background/95 border-r flex flex-col px-4 py-6",
             open ? "translate-x-0" : "-translate-x-full",
             "sm:translate-x-0 sm:block"
           )
@@ -120,74 +120,67 @@ export default function MainSidebar({ open, setOpen }: MainSidebarProps) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
-        <div className="px-3 py-2 flex-1">
-        <Link href="/dashboard" className="flex items-center pl-3 mb-8">
-          <div className="relative w-8 h-8 mr-3 bg-black rounded-md flex items-center justify-center">
-            <span className="text-white font-medium">C</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="font-semibold">Craft</span>
-            <span className="text-xs text-muted-foreground">Project 01</span>
-          </div>
-        </Link>
-        <div className="space-y-1">
-          {routes.map((route) => (
-            <Link
-              key={route.href}
-              href={route.href}
-              className={cn(
-                "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-md transition",
-                pathname === route.href
-                  ? "bg-accent text-accent-foreground font-semibold"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <div className="flex items-center flex-1">
+        <div className="flex flex-col flex-1">
+          <Link href="/dashboard" className="flex items-center mb-6 border-b pb-4">
+            <div className="relative w-8 h-8 mr-3 bg-black rounded-md flex items-center justify-center">
+              <span className="text-white font-medium">C</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-semibold">Craft</span>
+              <span className="text-xs text-muted-foreground">Project 01</span>
+            </div>
+          </Link>
+          <nav className="flex-1 space-y-1">
+            {routes.map((route) => (
+              <Link
+                key={route.href}
+                href={route.href}
+                className={cn(
+                  "flex items-center gap-3 px-2 py-2 rounded-md transition font-medium text-sm",
+                  pathname === route.href
+                    ? "bg-accent text-accent-foreground font-semibold border-l-4 border-primary"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
                 <route.icon className={cn(
-                  "h-5 w-5 mr-3",
+                  "h-5 w-5",
                   pathname === route.href
                     ? "text-primary"
                     : "text-muted-foreground group-hover:text-foreground"
                 )} />
                 {route.label}
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-      <div className="px-3 py-2">
-        <div className="space-y-1">
-          {supportRoutes.map((route) => (
-            <Link
-              key={route.href}
-              href={route.href}
-              target={route.external ? "_blank" : undefined}
-              rel={route.external ? "noopener noreferrer" : undefined}
-              className="text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-md transition text-muted-foreground"
-            >
-              <div className="flex items-center flex-1">
-                <route.icon className="h-5 w-5 mr-3" />
+              </Link>
+            ))}
+          </nav>
+          <div className="mt-6 border-t pt-4 space-y-1">
+            {supportRoutes.map((route) => (
+              <Link
+                key={route.href}
+                href={route.href}
+                target={route.external ? "_blank" : undefined}
+                rel={route.external ? "noopener noreferrer" : undefined}
+                className="flex items-center gap-3 px-2 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
+                <route.icon className="h-5 w-5" />
                 {route.label}
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-      <div className="px-3 py-2">
-        <div className="p-3 rounded-md border flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">10 Credits</span>
-            <Button variant="link" className="text-xs px-0 font-normal h-auto p-0">
-              Upgrade
-            </Button>
-          </div>
-          <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-            <div className="w-1/4 h-full bg-primary rounded-full" />
+              </Link>
+            ))}
           </div>
         </div>
-      </div>
-      <div className="px-3 py-2 mt-auto">
-        <div className="flex items-center p-2 mt-auto">
+        <div className="px-3 py-2">
+          <div className="p-3 rounded-md border flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">10 Credits</span>
+              <Button variant="link" className="text-xs px-0 font-normal h-auto p-0">
+                Upgrade
+              </Button>
+            </div>
+            <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="w-1/4 h-full bg-primary rounded-full" />
+            </div>
+          </div>
+        </div>
+        <div className="mt-auto border-t pt-4 flex items-center gap-2 bg-background/95">
           {authLoading ? (
             <div className="flex items-center gap-2">
               <Skeleton className="h-8 w-8 rounded-full" />
@@ -222,7 +215,6 @@ export default function MainSidebar({ open, setOpen }: MainSidebarProps) {
             </div>
           )}
         </div>
-      </div>
       </aside>
     </>
   );

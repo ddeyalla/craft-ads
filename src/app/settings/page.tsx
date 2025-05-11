@@ -82,10 +82,12 @@ export default function SettingsPage() {
   
   return (
     <AuthRequiredWrapper>
-      <div className="container max-w-screen-lg mx-auto py-10">
+      <div className="container max-w-screen-lg mx-auto p-5">
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+          <header className="sticky top-0 z-10 h-14 flex items-center bg-background/95 border-b px-4">
+            <h1 className="text-xl font-bold tracking-tight">Settings</h1>
+          </header>
+          <div className="mt-4">
             <p className="text-muted-foreground">
               Manage your account settings and profile preferences.
             </p>
