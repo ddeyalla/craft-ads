@@ -63,49 +63,43 @@ export function AdCard({ id, imageUrl, adCopy, productTitle, onDelete, status = 
     switch (status) {
       case 'submitted':
         return (
-          <div className="relative aspect-square flex items-center justify-center bg-muted/30">
-            <div className="text-center p-4">
-              <p className="text-sm font-medium">Ad Submitted</p>
-              <p className="text-xs text-muted-foreground mt-1">Your ad is queued for generation</p>
-            </div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/30 p-2 text-center">
+            <p className="font-medium">Ad Submitted</p>
+            <p className="small text-muted-foreground mt-1">Your ad is queued for generation</p>
           </div>
         );
       case 'generating':
         return (
-          <div className="relative aspect-square flex flex-col items-center justify-center bg-muted/30">
-            <Loader2 className="h-8 w-8 animate-spin mb-2 text-primary" />
-            <p className="text-sm font-medium">Generating Ad</p>
-            <p className="text-xs text-muted-foreground mt-1">This may take a moment...</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/30 p-2 text-center">
+            <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mb-2 text-primary" />
+            <p className="font-medium">Generating Ad</p>
+            <p className="small text-muted-foreground mt-1">This may take a moment...</p>
           </div>
         );
       case 'error':
         return (
-          <div className="relative aspect-square flex flex-col items-center justify-center bg-red-500/10">
-            <p className="text-sm font-medium text-red-700">Generation Failed</p>
-            <p className="text-xs text-muted-foreground mt-1">Please try again later.</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-500/10 p-2 text-center">
+            <p className="font-medium text-red-700">Generation Failed</p>
+            <p className="small text-muted-foreground mt-1">Please try again later.</p>
             {/* Optionally, add a retry button or more info here */}
           </div>
         );
       case 'generated':
       default:
         if (!imageUrl) {
-          // console.warn(`[AdCard] Image URL is missing for generated ad ID ${id}`);
           return (
-            <div className="relative aspect-square flex flex-col items-center justify-center bg-muted">
-              <p className="text-sm font-medium text-muted-foreground">Image Not Available</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted p-2 text-center">
+              <p className="font-medium text-muted-foreground">Image Not Available</p>
             </div>
           );
         }
-        console.log(`[AdCard] Image URL for ad ID ${id}: ${imageUrl}`); // Log the image URL
         return (
-          <div className="relative aspect-square group">
-            <Image 
-              src={imageUrl} 
-              alt={adCopy}
-              fill
-              className="object-cover"
-            />
-          </div>
+          <Image 
+            src={imageUrl} 
+            alt={adCopy}
+            fill
+            className="object-cover"
+          />
         );
     }
   };
@@ -120,24 +114,29 @@ export function AdCard({ id, imageUrl, adCopy, productTitle, onDelete, status = 
 
   return (
     <div 
-      className="group relative rounded-md overflow-hidden bg-background border h-[320px] flex flex-col cursor-pointer"
+      className="group relative rounded-md overflow-hidden bg-background border flex flex-col cursor-pointer shadow-sm hover:shadow-md transition-shadow duration-200"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleCardClick}
     >
-      <div className="flex-1 min-h-0">
-        {renderCardContent()}
+      {/* Image/Status Area - This will define its own height based on width due to aspect-square */}
+      <div className="relative w-full aspect-square bg-muted">
+        {renderCardContent()} 
       </div>
-      <div className="p-3 space-y-1.5 flex-shrink-0">
-        <h3 className="font-medium text-sm line-clamp-1">{adCopy}</h3>
-        <p className="text-xs text-muted-foreground line-clamp-2">{productTitle}</p>
+      
+      {/* Text Area */}
+      <div className="p-2 sm:p-3 space-y-1">
+        <h3 className="h6 font-medium line-clamp-1 break-all">{adCopy}</h3>
+        <p className="small text-muted-foreground line-clamp-1 sm:line-clamp-2 break-all">{productTitle}</p>
       </div>
+
+      {/* Hover Actions - positioned absolutely relative to the main card div */}
       {status === 'generated' && (
-        <div className={`absolute top-2 right-2 flex gap-2 transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+        <div className={`absolute top-2 right-2 flex gap-1 sm:gap-2 transition-opacity duration-200 ${isHovered ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
           <Button 
             variant="secondary" 
             size="icon" 
-            className="h-8 w-8"
+            className="h-7 w-7 sm:h-8 sm:w-8"
             onClick={(e) => {
               e.stopPropagation(); // Prevent card click navigation
               setIsSharing(true);
@@ -165,20 +164,22 @@ export function AdCard({ id, imageUrl, adCopy, productTitle, onDelete, status = 
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-8 w-8"
+                className="h-7 w-7 sm:h-8 sm:w-8"
                 onClick={(e) => e.stopPropagation()} // Prevent card click navigation
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleDownload}>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
                 <Download className="h-4 w-4 mr-2" />
                 Download
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onDelete}>
-                Delete
-              </DropdownMenuItem>
+              {onDelete && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+                  Delete
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

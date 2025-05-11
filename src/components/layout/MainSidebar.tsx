@@ -131,27 +131,27 @@ export default function MainSidebar({ open, setOpen }: MainSidebarProps) {
             </div>
           </Link>
           <nav className="flex-1 space-y-1">
-            {routes.map((route) => (
-              <Link
-                key={route.href}
-                href={route.href}
-                className={cn(
-                  "flex items-center gap-3 px-2 py-2 rounded-md transition font-medium text-sm",
-                  pathname === route.href
-                    ? "bg-accent text-accent-foreground font-semibold border-l-4 border-primary"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <route.icon className={cn(
-                  "h-5 w-5",
-                  pathname === route.href
-                    ? "text-primary"
-                    : "text-muted-foreground group-hover:text-foreground"
-                )} />
-                {route.label}
-              </Link>
-            ))}
-          </nav>
+  {routes.map((route) => (
+    <Link
+      key={route.href}
+      href={route.href}
+      className={cn(
+        "flex items-center gap-3 px-2 py-2 rounded-md transition font-medium text-sm",
+        pathname === route.href
+          ? "bg-accent text-accent-foreground font-semibold border-l-4 border-primary"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+      )}
+    >
+      <route.icon className={cn(
+        "h-5 w-5",
+        pathname === route.href
+          ? "text-primary"
+          : "text-muted-foreground group-hover:text-foreground"
+      )} />
+      {route.label}
+    </Link>
+  ))}
+</nav>
           <div className="mt-6 border-t pt-4 space-y-1">
             {supportRoutes.map((route) => (
               <Link

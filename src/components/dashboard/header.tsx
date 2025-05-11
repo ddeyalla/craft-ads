@@ -20,7 +20,8 @@ export function Header({ title, right }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex items-center justify-between w-full h-14 px-4">
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        {/* Fixed 20px font size as requested */}
+        <h1 className="text-[20px] font-semibold tracking-tight">{title}</h1>
         {right ? (
           <div className="flex items-center gap-2">{right}</div>
         ) : (

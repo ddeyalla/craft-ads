@@ -10,8 +10,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AdCard } from './ad-card';
-import { Ad, AdStatus } from '@/types/ad';
-import { AdInProgress } from '@/app/dashboard/page';
+import { Ad, AdStatus, AdInProgress } from '@/types/ad';
 
 interface StoredAd {
   id: string;
@@ -193,7 +192,7 @@ export default function AdLibrary({ adsInProgress }: AdLibraryProps) {
           {ads.length === 0 && adsInProgress.length === 0 && (
             <div className="text-center py-12 border rounded-md">
               <p className="text-muted-foreground">No ads created yet</p>
-              <p className="text-sm text-muted-foreground mt-1">Generate your first ad using the form</p>
+              <p className="small text-muted-foreground mt-1">Generate your first ad using the form</p>
             </div>
           )}
         </div>

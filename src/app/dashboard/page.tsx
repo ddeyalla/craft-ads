@@ -70,8 +70,10 @@ export default function NewDashboardPage() {
         <Header
           title={`Welcome, ${profile?.full_name || user?.user_metadata?.full_name || 'there'}`}
           right={
-            <Button variant="outline">
-              <CalendarIcon className="mr-2 h-4 w-4" /> Book a call with the founder
+            <Button variant="outline" size="sm" className="h-8">
+              <CalendarIcon className="mr-0 h-4 w-4 sm:mr-2" /> 
+              <span className="hidden sm:inline">Book a call with the founder</span>
+              <span className="sm:hidden">Book Call</span>
             </Button>
           }
         />

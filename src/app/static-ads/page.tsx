@@ -8,16 +8,8 @@ import { Header } from "@/components/dashboard/header";
 import AdGenerator from "@/components/dashboard/ad-generator";
 import AdLibrary from "@/components/dashboard/ad-library";
 import { toast } from "sonner";
-import { Ad, AdStatus } from "@/types/ad";
+import { Ad, AdStatus, AdInProgress } from '@/types/ad';
 import { AdApiResponse } from '@/components/dashboard/ad-generator';
-
-// Define the type for an ad in progress
-export type AdInProgress = {
-  id: string;
-  title: string;
-  description: string;
-  status: AdStatus;
-};
 
 // Create a context for managing ads in progress
 type AdGenerationContextType = {
@@ -68,15 +60,19 @@ export default function DashboardPage() {
     <AdGenerationContext.Provider value={{ adsInProgress, addSubmittedAd, updateAdStatus, removeAdInProgress }}>
       <div className="h-screen flex flex-col overflow-hidden">
         {/* Fixed top nav */}
-        <div className="sticky top-0 bg-background w-full">
-          <div className="h-14 px-0">
+        <div className="sticky top-0 bg-background w-full z-10">
+          {/* Assuming Header component itself handles internal padding for responsiveness */}
+          {/* The direct parent div for Header is h-14 (56px) */}
+          <div className="h-14">
             <Header title="Static ad generations" />
           </div>
         </div>
         
-        <div className="flex flex-1 h-[calc(100vh-72px)]">
+        {/* Adjusted height calculation based on h-14 (56px) header container */}
+        <div className="flex flex-1 h-[calc(100vh-56px)]">
           {/* Main (scrollable) gallery section */}
-          <div className="flex-1 overflow-y-auto p-5">
+          {/* Responsive padding: p-3 base, sm:p-4, lg:p-5 */}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
             <Tabs defaultValue="today">
               <TabsContent value="today">
                 <AdLibrary adsInProgress={adsInProgress} />
@@ -89,7 +85,8 @@ export default function DashboardPage() {
             </Tabs>
           </div>
           {/* Fixed ad form on the right */}
-          <div className="hidden lg:block lg:w-[380px] shrink-0 border-l bg-background p-5 overflow-y-auto max-h-full">
+          {/* Responsive padding for lg screens and up: lg:p-4, xl:p-5 */}
+          <div className="hidden lg:block lg:w-[380px] shrink-0 border-l bg-background p-4 xl:p-5 overflow-y-auto max-h-full">
             <AdGenerator onSuccess={(generatedAdFromApi: AdApiResponse) => {
               console.log('[StaticAdsPage] AdGenerator onSuccess, data from API:', generatedAdFromApi);
               

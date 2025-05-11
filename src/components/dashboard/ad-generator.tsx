@@ -243,9 +243,9 @@ export default function AdGenerator({ onSuccess }: { onSuccess: (generatedAd: Ad
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
-                <Upload className="h-4 w-4 mb-2 text-muted-foreground/70" />
-                <p className="text-xs font-medium text-center">Drag and drop your product image or click to select</p>
-                <p className="text-xs font-light mt-1">Max size: 5MB. Recommended 1000×1000</p>
+                <Upload className="w-8 h-8 text-muted-foreground" />
+                <p className="small text-muted-foreground">Drag & drop an image here, or click to select</p>
+                <em className="small text-muted-foreground">(Max 5MB, PNG, JPG, GIF, WEBP)</em>
               </div>
             )}
           </div>
