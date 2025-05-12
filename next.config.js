@@ -9,6 +9,18 @@ const nextConfig = {
         port: '',
         pathname: '/storage/v1/object/public/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'dms.mydukaan.io',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'dukaan.b-cdn.net',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

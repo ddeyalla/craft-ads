@@ -35,11 +35,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
-        if (session?.user?.id) {
-          console.log('AuthContext: Session found. User ID:', session.user.id, 'Session object:', JSON.stringify(session, null, 2));
-          await fetchProfile(session.user.id);
+        if (currentSession?.user?.id) {
+          console.log('AuthContext: Auth state changed. User ID from currentSession:', currentSession.user.id, 'Current Session object:', JSON.stringify(currentSession, null, 2));
+          await fetchProfile(currentSession.user.id);
         } else {
-          console.log('AuthContext: No active session or user ID found.', 'Session:', JSON.stringify(session, null, 2));
+          console.log('AuthContext: Auth state changed. No active session or user ID in currentSession.', 'Current Session:', JSON.stringify(currentSession, null, 2));
           setProfile(null);
         }
         

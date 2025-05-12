@@ -1,52 +1,116 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions as SupabaseCookieOptions } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
+import type { Database } from '@/lib/database.types'
+import type { User } from '@supabase/supabase-js'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
-// Handle OAuth callback and exchange code for session
 export async function GET(request: Request) {
-  const requestUrl = new URL(request.url);
-  const code = requestUrl.searchParams.get('code');
-  
-  // If no code is provided, redirect to home
-  if (!code) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-  
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  
-  // Create a server-side Supabase client
-  const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true
+  const requestUrl = new URL(request.url)
+  const code = requestUrl.searchParams.get('code')
+  const cookieStore = await cookies()
+
+  if (code) {
+    const supabase = createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: SupabaseCookieOptions) {
+            try {
+              cookieStore.set({ name, value, ...options })
+            } catch (error) {
+              // The `set` method was called from a Server Component.
+              // This can be ignored if you have middleware refreshing
+              // user sessions.
+            }
+          },
+          remove(name: string, options: SupabaseCookieOptions) {
+            try {
+              cookieStore.set({ name, value: '', ...options })
+            } catch (error) {
+              // The `delete` method was called from a Server Component.
+              // This can be ignored if you have middleware refreshing
+              // user sessions.
+            }
+          }
+        },
+        auth: {
+          persistSession: false, 
+          autoRefreshToken: false,
+          detectSessionInUrl: true 
+        }
+      }
+    )
+
+    try {
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      
+      if (error) {
+        console.error('Error exchanging code for session:', error)
+        return NextResponse.redirect(new URL('/?error=auth-exchange', requestUrl.origin))
+      }
+
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+        
+        if (!profile) {
+          const username = generateUsername()
+          await supabase.from('profiles').insert({
+            user_id: user.id,
+            username,
+            full_name: user.user_metadata.full_name || '',
+            avatar_url: user.user_metadata.avatar_url || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+        }
+      }
+
+      return NextResponse.redirect(new URL('/dashboard', requestUrl.origin))
+    } catch (error) {
+      console.error('Unexpected error in auth callback:', error)
+      return NextResponse.redirect(new URL('/?error=auth-unhandled', requestUrl.origin))
     }
-  });
-  
-  // Exchange the code for a session
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-  
-  if (error) {
-    console.error('Error exchanging code for session:', error);
-    return NextResponse.redirect(new URL('/?error=auth', request.url));
   }
-  
-  // Check if user has a profile, if not create one with random username
-  await createOrUpdateProfile(supabase, data.user);
-  
-  // Redirect to dashboard upon successful authentication
-  return NextResponse.redirect(new URL('/dashboard', request.url));
+
+  return NextResponse.redirect(new URL('/', requestUrl.origin))
 }
 
-// Helper function to create or update user profile with Reddit-style username if needed
-async function createOrUpdateProfile(supabase: any, user: any) {
+function generateUsername(): string {
+  const adjectives = ['happy', 'clever', 'brave', 'calm', 'eager', 'kind', 'quick', 'wise']
+  const nouns = ['tiger', 'falcon', 'dolphin', 'panda', 'wolf', 'eagle', 'fox', 'lion']
+  const randomNum = Math.floor(Math.random() * 10000)
+  
+  const adjective = adjectives[Math.floor(Math.random() * adjectives.length)]
+  const noun = nouns[Math.floor(Math.random() * nouns.length)]
+  return `${adjective}-${noun}-${randomNum}`
+}
+
+interface CookieOptions {
+  domain?: string
+  path?: string
+  expires?: Date
+  httpOnly?: boolean
+  secure?: boolean
+  sameSite?: 'strict' | 'lax' | 'none'
+  maxAge?: number
+}
+
+async function createOrUpdateProfile(supabase: any, user: User | null | undefined) {
   if (!user) return;
   
   try {
-    // Check if profile exists
     const { data: existingProfile } = await supabase
       .from('profiles')
       .select('*')
@@ -54,7 +118,6 @@ async function createOrUpdateProfile(supabase: any, user: any) {
       .single();
     
     if (!existingProfile) {
-      // Generate Reddit-style username: adjective-noun-number
       const adjectives = ['happy', 'clever', 'brave', 'calm', 'eager', 'kind', 'quick', 'wise'];
       const nouns = ['tiger', 'falcon', 'dolphin', 'panda', 'wolf', 'eagle', 'fox', 'lion'];
       const randomNum = Math.floor(Math.random() * 10000);
@@ -63,7 +126,6 @@ async function createOrUpdateProfile(supabase: any, user: any) {
       const noun = nouns[Math.floor(Math.random() * nouns.length)];
       const username = `${adjective}-${noun}-${randomNum}`;
       
-      // Create profile
       await supabase.from('profiles').insert({
         user_id: user.id,
         username,

@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, ArrowRightIcon } from 'lucide-react';
-import { Ad, AdStatus } from '@/types/ad'; 
+import { CalendarIcon } from 'lucide-react';
+import { Ad } from '@/types/ad'; 
 import { AuthRequiredWrapper } from '@/components/auth/AuthRequiredWrapper';
 import { useAuth } from '@/lib/context/auth-context';
 import { AdCard } from '@/components/dashboard/ad-card';
@@ -17,7 +16,7 @@ export default function NewDashboardPage() {
   const [adsAreLoading, setAdsAreLoading] = useState(true);
 
   // Function to load ads from localStorage
-  const loadAdsFromLocalStorage = () => {
+  const loadAdsFromLocalStorage = useCallback(() => {
     if (user?.id) {
       const storedAdsString = localStorage.getItem('ads');
       if (storedAdsString) {
@@ -40,14 +39,14 @@ export default function NewDashboardPage() {
       }
     }
     setAdsAreLoading(false);
-  };
+  }, [user?.id]);
 
   // Effect for initial ad load and when user/auth state changes
   useEffect(() => {
     if (!authContextIsLoading) { // Only load if authentication process is complete
       loadAdsFromLocalStorage();
     }
-  }, [user, authContextIsLoading]); // Rerun if user object or authContextIsLoading status changes
+  }, [user, authContextIsLoading, loadAdsFromLocalStorage]); // Rerun if user object or authContextIsLoading status changes
 
   // Effect to listen for custom 'ads-updated' event
   useEffect(() => {
@@ -62,7 +61,7 @@ export default function NewDashboardPage() {
     return () => {
       window.removeEventListener('ads-updated', handleAdsUpdated);
     };
-  }, [user]); // Rerun if user changes, to ensure loadAdsFromLocalStorage has the correct user context
+  }, [user, loadAdsFromLocalStorage]); // Rerun if user changes, to ensure loadAdsFromLocalStorage has the correct user context
 
   return (
     <AuthRequiredWrapper>

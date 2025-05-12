@@ -3,7 +3,6 @@ import OpenAI, { toFile } from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
-import { cookies } from 'next/headers';
 
 // Ensure the API key is available
 if (!process.env.OPENAI_API_KEY) {
@@ -99,9 +98,9 @@ export async function POST(request: NextRequest) {
         throw new Error('OpenAI Research API returned empty content.');
       }
       console.log('[Step 1] Research Summary Generated:', researchSummary);
-    } catch (error: any) {
-      console.error('[API Step 1/2 Error] Failed during Deep Research:', error.message || error);
-      throw new Error(`Research step failed: ${error.message}`);
+    } catch (error: unknown) {
+      console.error('[API Step 1/2 Error] Failed during Deep Research:', (error as Error).message || error);
+      throw new Error(`Research step failed: ${(error as Error).message}`);
     }
 
     let adCopy: string | null = null;
@@ -173,9 +172,9 @@ TONE AND FORMAT
         throw new Error('OpenAI Ad Copy API returned empty content.');
       }
       console.log('[Step 2] Ad Copy Generated:', adCopy);
-    } catch (error: any) {
-      console.error('[API Step 1/2 Error] Failed during Ad Copy Generation:', error.message || error);
-      throw new Error(`Ad Copy step failed: ${error.message}`);
+    } catch (error: unknown) {
+      console.error('[API Step 1/2 Error] Failed during Ad Copy Generation:', (error as Error).message || error);
+      throw new Error(`Ad Copy step failed: ${(error as Error).message}`);
     }
 
     let finalImageUrl: string | null = null;
@@ -193,7 +192,7 @@ TONE AND FORMAT
       console.log(`[Step 3] Original image type: ${originalMimeType}. Decoding Base64.`);
 
       // Decode Base64 to initial buffer
-      let initialBuffer = Buffer.from(base64Data, 'base64');
+      const initialBuffer = Buffer.from(base64Data, 'base64');
       let bufferForOpenAI: Buffer;
       const requiredMimeTypeForOpenAI = 'image/png'; // API requires PNG
 
@@ -203,9 +202,9 @@ TONE AND FORMAT
         try {
           bufferForOpenAI = await sharp(initialBuffer).png().toBuffer();
           console.log('[Step 3] Conversion to PNG successful.');
-        } catch (conversionError: any) {
+        } catch (conversionError: unknown) {
           console.error('[Step 3 Error] Sharp PNG conversion failed:', conversionError);
-          throw new Error(`Failed to convert uploaded image to PNG: ${conversionError.message}`);
+          throw new Error(`Failed to convert uploaded image to PNG: ${(conversionError as Error).message}`);
         }
       } else {
         console.log('[Step 3] Image is already PNG, no conversion needed.');
@@ -291,9 +290,9 @@ TONE AND FORMAT
       finalImageUrl = urlData.publicUrl;
       console.log('[Step 5] Supabase Public URL Generated:', finalImageUrl);
 
-    } catch (error: any) {
-      console.error('[API Step 3/4/5 Error] Failed during Image Processing/Edit/Upload/URL Retrieval:', error.message || error);
-      throw new Error(`Image processing/storage failed: ${error.message}`);
+    } catch (error: unknown) {
+      console.error('[API Step 3/4/5 Error] Failed during Image Processing/Edit/Upload/URL Retrieval:', (error as Error).message || error);
+      throw new Error(`Image processing/storage failed: ${(error as Error).message}`);
     }
 
     // --- Return final result ---
@@ -317,10 +316,10 @@ TONE AND FORMAT
     });
     return NextResponse.json(responsePayload);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Catch overarching errors (e.g., failed JSON parsing, Step 1/2 errors)
-    console.error('[API Overall Error] Error caught in main handler:', error.message || error);
+    console.error('[API Overall Error] Error caught in main handler:', (error as Error).message || error);
     // console.error(error); // Log full error object if needed
-    return NextResponse.json({ error: `Ad generation failed: ${error.message}` }, { status: 500 });
+    return NextResponse.json({ error: `Ad generation failed: ${(error as Error).message}` }, { status: 500 });
   }
 }

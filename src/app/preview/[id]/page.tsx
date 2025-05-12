@@ -16,6 +16,20 @@ function trimDescription(desc: string) {
   return desc.length > 50 ? desc.slice(0, 50) + '...' : desc;
 }
 
+// Define an interface for the raw ad data from localStorage
+interface LocalStorageAd {
+  id?: string;
+  title?: string;
+  headline?: string;
+  description?: string;
+  imageUrl?: string;
+  image_url?: string; // Alternative key for imageUrl
+  status?: string; // Assuming status might be a string initially
+  created_at?: string;
+  updated_at?: string;
+  user_id?: string | null;
+}
+
 export default function AdPreviewPage() {
   const router = useRouter();
   const params = useParams();
@@ -27,13 +41,10 @@ export default function AdPreviewPage() {
   const [allAds, setAllAds] = useState<Ad[]>([]);
   const [currentAdIndex, setCurrentAdIndex] = useState<number>(-1);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
-  const [isImageLoaded, setImageLoaded] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false);
 
   const descriptionRef = useRef<HTMLSpanElement | null>(null);
 
   const debouncedNavigate = useDebounce((url: string) => {
-    setImageLoaded(false);
     router.push(url);
   }, 300);
 
@@ -94,7 +105,7 @@ export default function AdPreviewPage() {
       return;
     }
     const storedAds = JSON.parse(storedAdsString);
-    const formattedAds: Ad[] = storedAds.map((adData: any, idx: number) => ({
+    const formattedAds: Ad[] = storedAds.map((adData: LocalStorageAd, idx: number) => ({
       id: adData.id || `ad-${idx}-${Date.now()}`,
       adCopy: adData.title || adData.headline || '',
       productTitle: adData.description || '',
@@ -121,8 +132,6 @@ export default function AdPreviewPage() {
     const decodedAdId = decodeURIComponent(rawAdIdFromParams);
 
     setLoading(true);      
-    setImageLoaded(false); 
-
     if (!allAds.length) {
       if (!localStorage.getItem('ads')) { 
         setAd(null);
@@ -139,7 +148,6 @@ export default function AdPreviewPage() {
       setAd(allAds[idx]);
       setCurrentAdIndex(idx);
       setError(null); 
-      setIsNavigating(false); 
       setLoading(false); 
     } else { 
       setError(null); 
@@ -200,121 +208,97 @@ export default function AdPreviewPage() {
 
   if (!ad) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
-        <h1 className="text-2xl font-semibold mb-4 text-foreground">Ad not found</h1>
-        <p className="text-muted-foreground mb-6">The ad you're looking for doesn't exist or has been deleted.</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+        <X size={48} className="text-destructive mb-4" />
+        <h2 className="text-2xl font-semibold mb-2">Ad Not Found</h2>
+        {error ? (
+          <p className="text-muted-foreground text-center mb-6">{error}</p>
+        ) : (
+          <p className="text-muted-foreground text-center mb-6">
+            Couldn&apos;t find that ad. It&apos;s possible it was deleted or the link is incorrect.
+          </p>
+        )}
         <Button asChild>
-          <Link href="/static-ads">Return to Dashboard</Link>
+          <Link href="/dashboard">Go to Dashboard</Link>
         </Button>
       </div>
     );
   }
 
+  // Default to a generic product image if specific ad image is not yet loaded or fails
+  const displayImageUrl = ad.imageUrl || '/placeholder-image.svg';
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {error && (
-        <div className="fixed inset-0 bg-destructive/10 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-background p-4 rounded-lg shadow-lg">
-            <p className="text-destructive text-center">{error}</p>
+    <div className="fixed inset-0 bg-background z-50 flex flex-col items-center justify-center p-0 overflow-hidden sm:p-4">
+      {/* Close Button */} 
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="absolute top-4 right-4 z-50 text-foreground hover:bg-muted/50 h-10 w-10 rounded-full"
+        onClick={() => router.push('/dashboard')}
+        aria-label="Close preview"
+      >
+        <X size={24} />
+      </Button>
+
+      {/* Content Area */} 
+      <div className="relative w-full max-w-[420px] h-full sm:max-h-[80vh] sm:h-auto sm:rounded-xl overflow-hidden shadow-2xl bg-card flex flex-col aspect-[4/5]">
+        
+        {/* Image with loading skeleton */}
+        <div className="relative w-full aspect-square bg-muted/40">
+          <Image 
+            key={ad.id} // Force re-render on ad change
+            src={displayImageUrl}
+            alt={ad.adCopy ? `Ad image for ${ad.adCopy}` : "Ad image"}
+            layout="fill"
+            objectFit="cover"
+            priority
+            className={`transition-opacity duration-300 ease-in-out opacity-100`}
+          />
+        </div>
+
+        {/* Text Content + Actions */}
+        <div className="w-full text-center mt-6">
+          <h2 className="text-2xl font-bold text-foreground">{ad?.adCopy}</h2>
+          <div className="w-full text-center mt-4">
+            <span
+              className="text-sm text-muted-foreground block max-w-full truncate line-clamp-1"
+              ref={descriptionRef}
+            >
+              {ad.productTitle ? trimDescription(ad.productTitle) : ''}
+              {ad.productTitle && ad.productTitle.length > 50 && (
+                <>
+                  <span> </span>
+                  <button
+                    className="inline text-primary text-xs font-medium ml-1 focus:outline-none underline hover:opacity-80 transition-opacity"
+                    onClick={() => setShowDescriptionModal(true)}
+                    aria-label="Read full description"
+                  >
+                    Read more
+                  </button>
+                </>
+              )}
+            </span>
+          </div>
+          
+          <div className="flex justify-center gap-4 mt-6">
+            <Button 
+              variant="outline" 
+              className="flex gap-2 min-w-[120px]"
+              onClick={handleDownload}
+              disabled={!ad.imageUrl}
+            >
+              <Download className="w-4 h-4" /> Download
+            </Button>
+            <Button 
+              variant="default" 
+              className="flex gap-2 min-w-[120px]"
+              onClick={handleShare}
+            >
+              <Share2 className="w-4 h-4" /> Share
+            </Button>
           </div>
         </div>
-      )}
-      
-
-      
-      <div className="flex flex-col flex-1">
-        <header className="w-full flex items-center justify-between px-6 py-4 border-b border-border bg-background">
-          <div className="flex items-center gap-2 min-w-[180px]">
-            <Button variant="ghost" size="icon" onClick={() => router.push('/static-ads')}>
-              <X className="h-5 w-5" />
-            </Button>
-            <span className="text-lg font-semibold tracking-tight text-foreground">Static Ads</span>
-          </div>
-          
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-            <span className="text-xl font-bold text-primary leading-tight">{ad.adCopy}</span>
-            <span className="text-xs text-muted-foreground font-medium mt-1">{formatDate(ad.created_at)}</span>
-          </div>
-          
-          <div className="flex items-center gap-2 min-w-[120px] justify-end">
-            <Button
-              variant="secondary"
-              size="icon"
-              className="rounded-full w-10 h-10 shadow-md"
-              onClick={handlePrevAd}
-              disabled={currentAdIndex <= 0}
-              aria-label="Previous Ad"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </Button>
-            <Button
-              variant="secondary"
-              size="icon"
-              className="rounded-full w-10 h-10 shadow-md"
-              onClick={handleNextAd}
-              disabled={currentAdIndex >= allAds.length - 1}
-              aria-label="Next Ad"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </Button>
-          </div>
-        </header>
-        
-        <main className="flex flex-col items-center justify-center flex-1 w-full px-4 py-8 bg-background">
-          <div className="flex flex-col items-center w-full max-w-[min(90vw,440px)] mx-auto">
-            <div className="relative w-full max-w-full aspect-[4/5] rounded-xl overflow-hidden bg-muted/20 flex items-center justify-center shadow-sm">
-              <Image
-                src={ad?.imageUrl || "/fallback-image.png"}
-                alt={ad?.adCopy || "Ad image"}
-                fill
-                className="object-contain w-full h-full rounded-xl"
-                priority
-              />
-            </div>
-            
-            <div className="w-full text-center mt-6">
-              <h2 className="text-2xl font-bold text-foreground">{ad?.adCopy}</h2>
-              <div className="w-full text-center mt-4">
-                <span
-                  className="text-sm text-muted-foreground block max-w-full truncate line-clamp-1"
-                  ref={descriptionRef}
-                >
-                  {ad.productTitle ? trimDescription(ad.productTitle) : ''}
-                  {ad.productTitle && ad.productTitle.length > 50 && (
-                    <>
-                      <span> </span>
-                      <button
-                        className="inline text-primary text-xs font-medium ml-1 focus:outline-none underline hover:opacity-80 transition-opacity"
-                        onClick={() => setShowDescriptionModal(true)}
-                        aria-label="Read full description"
-                      >
-                        Read more
-                      </button>
-                    </>
-                  )}
-                </span>
-              </div>
-              
-              <div className="flex justify-center gap-4 mt-6">
-                <Button 
-                  variant="outline" 
-                  className="flex gap-2 min-w-[120px]"
-                  onClick={handleDownload}
-                  disabled={!ad.imageUrl}
-                >
-                  <Download className="w-4 h-4" /> Download
-                </Button>
-                <Button 
-                  variant="default" 
-                  className="flex gap-2 min-w-[120px]"
-                  onClick={handleShare}
-                >
-                  <Share2 className="w-4 h-4" /> Share
-                </Button>
-              </div>
-            </div>
-          </div>
-        </main>
       </div>
       
       {showDescriptionModal && (
